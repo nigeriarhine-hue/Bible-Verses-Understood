@@ -16,7 +16,8 @@
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run audit:contrast && npm run build",
     "audit:contrast": "node scripts/audit-contrast.mjs",
-    "audit:readability": "node scripts/audit-readability.mjs"
+    "audit:readability": "node scripts/audit-readability.mjs",
+    "supabase:check": "node scripts/check-supabase.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

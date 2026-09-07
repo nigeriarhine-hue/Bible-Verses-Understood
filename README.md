@@ -116,6 +116,21 @@ supabase start
 supabase functions serve   # then set VITE_FUNCTIONS_URL=http://127.0.0.1:54321/functions/v1
 ```
 
+### Checking the connection
+
+Once `.env.local` has your URL and anon key:
+
+```bash
+npm run supabase:check
+```
+
+It uses only the public anon key and reports whether the project is reachable,
+whether the migrations have been applied, whether the seed data is present,
+whether Row Level Security is genuinely refusing anonymous reads of private
+tables, and which Edge Functions are deployed. It refuses to report anything it
+could not verify — if it cannot reach the project it stops rather than reading a
+network error as a passing check.
+
 ### Auth
 
 Email/password sign-up, sign-in, sign-out and password reset work out of the box.
@@ -273,6 +288,7 @@ are used to answer that one request and are not stored.
 | `npm run audit:readability` | Live browser readability and layout audit |
 | `npm run bible:build` | Rebuild the bundled Scripture data |
 | `npm run db:types` | Regenerate database types from a local Supabase |
+| `npm run supabase:check` | Check a configured project: reachability, migrations, seeds, RLS, functions |
 
 ---
 
