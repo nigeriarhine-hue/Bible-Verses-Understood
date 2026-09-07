@@ -1,0 +1,28 @@
+{
+  "translations": [
+    {
+      "code": "KJV",
+      "name": "King James Version",
+      "year": 1769,
+      "verses": 31102
+    },
+    {
+      "code": "ASV",
+      "name": "American Standard Version",
+      "year": 1901,
+      "verses": 31102
+    },
+    {
+      "code": "YLT",
+      "name": "Young's Literal Translation",
+      "year": 1898,
+      "verses": 31102
+    },
+    {
+      "code": "BSB",
+      "name": "Berean Standard Bible",
+      "year": 2023,
+      "verses": 31102
+    }
+  ]
+}

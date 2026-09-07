@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+build/
+*.local
+
+# Environment — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Test / tooling caches
+coverage/
+.eslintcache
+.vite/
+.turbo/
+*.tsbuildinfo
+
+# Supabase local state
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# Scratch
+/tmp-scratch/
+playwright-report/
+test-results/
+screenshots/

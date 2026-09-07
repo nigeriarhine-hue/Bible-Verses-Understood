@@ -1,0 +1,5 @@
+{
+  "imports": {},
+  "lint": { "rules": { "tags": ["recommended"] } },
+  "fmt": { "singleQuote": true, "lineWidth": 100 }
+}
