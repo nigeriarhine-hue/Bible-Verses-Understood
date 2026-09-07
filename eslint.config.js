@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'public/bible', 'supabase/functions/**'] },
+  { ignores: ['dist', 'node_modules', 'public/scripture', 'supabase/functions/**'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -25,8 +25,10 @@ export default tseslint.config(
     },
   },
   {
+    // Node scripts. audit-readability.mjs also contains a function that is
+    // serialised and executed inside the browser, so it needs both sets.
     files: ['scripts/**/*.mjs'],
     extends: [js.configs.recommended],
-    languageOptions: { globals: { ...globals.node } },
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 );

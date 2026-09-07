@@ -46,3 +46,10 @@ supabase/.env
 playwright-report/
 test-results/
 screenshots/
+
+# Local throwaway helpers used while developing (not part of the project)
+/.shot.mjs
+/.flow.mjs
+/.crop.mjs
+/.menu.mjs
+/.devserver.sh

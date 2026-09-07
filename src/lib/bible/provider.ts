@@ -42,7 +42,7 @@ export class ScriptureError extends Error {
 
 async function loadLocalBook(translation: string, bookId: string): Promise<LocalBookFile> {
   return cachedFetch(`bvu:book:${translation}:${bookId}`, DAY * 30, async () => {
-    const res = await fetch(`${import.meta.env.BASE_URL}bible/${translation}/${bookId}.json`);
+    const res = await fetch(`${import.meta.env.BASE_URL}scripture/${translation}/${bookId}.json`);
     if (!res.ok) {
       throw new ScriptureError(`Could not load ${bookId} (${translation}).`, 'not_found');
     }

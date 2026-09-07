@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Normalises public-domain Bible datasets into the compact per-book JSON files
- * the app serves from `public/bible/<CODE>/<book-id>.json`.
+ * the app serves from `public/scripture/<CODE>/<book-id>.json`.
  *
  * Source: https://github.com/scrollmapper/bible_databases (public-domain texts).
  *
@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const OUT_ROOT = path.join(ROOT, 'public', 'bible');
+const OUT_ROOT = path.join(ROOT, 'public', 'scripture');
 const SOURCE_BASE =
   'https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/json';
 
@@ -120,7 +120,7 @@ async function build() {
   }
 
   await writeFile(path.join(OUT_ROOT, 'manifest.json'), JSON.stringify({ translations: manifest }, null, 2));
-  process.stdout.write(`\nWrote ${manifest.length} translations to public/bible\n`);
+  process.stdout.write(`\nWrote ${manifest.length} translations to public/scripture\n`);
 }
 
 build().catch((err) => {

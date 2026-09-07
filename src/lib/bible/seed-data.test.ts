@@ -20,7 +20,7 @@ interface BookIndex {
 }
 
 const index = JSON.parse(
-  readFileSync(path.join(ROOT, 'public/bible/KJV/index.json'), 'utf8'),
+  readFileSync(path.join(ROOT, 'public/scripture/KJV/index.json'), 'utf8'),
 ) as BookIndex;
 const verseCounts = new Map(index.books.map((b) => [b.id, b.verses]));
 
@@ -45,7 +45,7 @@ describe('bundled Scripture data', () => {
   it('has all 66 books in every translation', () => {
     for (const code of ['KJV', 'ASV', 'YLT', 'BSB']) {
       const file = JSON.parse(
-        readFileSync(path.join(ROOT, `public/bible/${code}/index.json`), 'utf8'),
+        readFileSync(path.join(ROOT, `public/scripture/${code}/index.json`), 'utf8'),
       ) as BookIndex;
       expect(file.books, code).toHaveLength(66);
       for (const book of BOOKS) {
