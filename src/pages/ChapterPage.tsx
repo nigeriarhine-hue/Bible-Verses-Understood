@@ -95,7 +95,7 @@ export default function ChapterPage() {
           ) : (
             <ol className="space-y-3">
               {data?.verses.map((verse) => (
-                <li key={verse.verse} className="group flex gap-3">
+                <li key={verse.verse} className="group flex items-start gap-3">
                   <Link
                     to={`/verse/${book.id}/${chapterNumber}/${verse.verse}`}
                     state={{ source: 'browse', resetTrail: true }}
@@ -104,16 +104,18 @@ export default function ChapterPage() {
                   >
                     {verse.verse}
                   </Link>
-                  <p className="scripture flex-1">
-                    {verse.text}{' '}
-                    <Link
-                      to={`/verse/${book.id}/${chapterNumber}/${verse.verse}`}
-                      state={{ source: 'browse', resetTrail: true }}
-                      className="ref-link ref-link-on-light whitespace-nowrap text-ui-xs font-sans opacity-0 transition focus:opacity-100 group-hover:opacity-100"
-                    >
-                      Understand This Verse →
-                    </Link>
-                  </p>
+                  <p className="scripture min-w-0 flex-1">{verse.text}</p>
+                  {/* Its own fixed-width column, so showing it on hover never
+                      reflows the verse or changes the spacing between rows. */}
+                  <Link
+                    to={`/verse/${book.id}/${chapterNumber}/${verse.verse}`}
+                    state={{ source: 'browse', resetTrail: true }}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[rgb(var(--gold-deep))] opacity-0 transition hover:bg-[rgb(var(--gold-deep))]/10 group-hover:opacity-100"
+                  >
+                    <Icon name="arrow-right" className="h-4 w-4" />
+                  </Link>
                 </li>
               ))}
             </ol>
