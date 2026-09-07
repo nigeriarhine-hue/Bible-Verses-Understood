@@ -11,6 +11,20 @@ function readEnv(key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * The site's public origin, e.g. https://bible-verses-understood.vercel.app
+ *
+ * Set VITE_SITE_URL in the Production environment only. It is used for
+ * canonical URLs, Open Graph tags and share links, which must name the public
+ * domain even when the page is served from a preview URL.
+ *
+ * Moving to a custom domain means changing this one variable — nothing in the
+ * codebase names a domain.
+ */
+export const SITE_URL = (
+  readEnv('VITE_SITE_URL') || (typeof window !== 'undefined' ? window.location.origin : '')
+).replace(/\/$/, '');
+
 export const SUPABASE_URL = readEnv('VITE_SUPABASE_URL');
 export const SUPABASE_ANON_KEY = readEnv('VITE_SUPABASE_ANON_KEY');
 export const GA_MEASUREMENT_ID = readEnv('VITE_GA_MEASUREMENT_ID') || 'G-YT6WK8YMX9';

@@ -4,6 +4,8 @@ import { useToast } from '../../context/ToastContext';
 import { trackEvent } from '../../lib/analytics';
 import type { Passage } from '../../lib/bible/types';
 import { supabase } from '../../lib/supabase';
+import { absoluteUrl } from '../../lib/urls';
+import { referenceToPath } from '../../lib/bible/reference';
 import { Icon } from '../ui/Icon';
 import { Modal } from '../ui/Modal';
 
@@ -30,6 +32,10 @@ export function ShareButton({ passage, tone = 'light' }: { passage: Passage; ton
     [passage],
   );
 
+  // Always share the passage's public URL, even when the reader is on a preview
+  // deployment or localhost.
+  const shareUrl = useMemo(() => absoluteUrl(referenceToPath(passage.reference)), [passage]);
+
   const record = (method: string) => {
     trackEvent('verse_shared', {
       reference: passage.reference.reference,
@@ -51,7 +57,7 @@ export function ShareButton({ passage, tone = 'light' }: { passage: Passage; ton
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(`${shareText}\n\n${window.location.href}`);
+      await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
       notify('Verse copied to your clipboard.', 'success');
       record('copy');
     } catch {
@@ -68,7 +74,7 @@ export function ShareButton({ passage, tone = 'light' }: { passage: Passage; ton
       await navigator.share({
         title: `${passage.reference.reference} — Bible Verses Understood`,
         text: shareText,
-        url: window.location.href,
+        url: shareUrl,
       });
       record('system');
     } catch {

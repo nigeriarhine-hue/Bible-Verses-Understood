@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { trackEvent } from '../lib/analytics';
+import { authRedirectUrl } from '../lib/urls';
 
 interface AuthContextValue {
   user: User | null;
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: displayName ? { display_name: displayName } : undefined,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: authRedirectUrl('/auth/callback'),
       },
     });
     if (error) throw new Error(friendlyAuthError(error.message));
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!client) throw new Error('Accounts are not available in this deployment.');
     const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: authRedirectUrl('/auth/callback') },
     });
     if (error) throw new Error(friendlyAuthError(error.message));
   }, []);
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = supabase;
     if (!client) throw new Error('Accounts are not available in this deployment.');
     const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`,
+      redirectTo: authRedirectUrl('/auth/reset'),
     });
     if (error) throw new Error(friendlyAuthError(error.message));
   }, []);

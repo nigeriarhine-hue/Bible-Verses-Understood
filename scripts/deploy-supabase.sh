@@ -76,4 +76,34 @@ done
 step "Checking the result"
 npm run --silent supabase:check || true
 
-printf '\nDone. If supabase:check reported everything green, the backend is live.\n'
+cat <<'NOTE'
+
+Two things the CLI cannot set — do them in the Supabase dashboard:
+
+  Authentication -> URL Configuration
+    Site URL:
+      https://bible-verses-understood.vercel.app
+    Redirect URLs (add all of these):
+      https://bible-verses-understood.vercel.app/**
+      http://localhost:5173/**
+      http://localhost:4173/**
+
+  Without those, email confirmation and password-reset links will bounce to
+  localhost or be refused.
+
+And in Vercel -> Settings -> Environment Variables (Production):
+    VITE_SUPABASE_URL
+    VITE_SUPABASE_ANON_KEY
+    VITE_SITE_URL = https://bible-verses-understood.vercel.app
+
+  Never put GOOGLE_GENERATIVE_AI_API_KEY, ESV_API_KEY, API_BIBLE_KEY or the
+  service-role key into Vercel: anything Vite can see reaches the browser.
+
+Optionally lock the Edge Functions to your own origins:
+    supabase secrets set ALLOWED_ORIGINS="https://bible-verses-understood.vercel.app"
+  Local development origins are always permitted, and leaving this unset keeps
+  the functions open, which is fine for a public Scripture reader.
+
+NOTE
+
+printf 'Done. If supabase:check reported everything green, the backend is live.\n'

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { trackPageView } from '../../lib/analytics';
+import { canonicalUrl } from '../../lib/urls';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Toaster } from '../ui/Toaster';
 import { Footer } from './Footer';
@@ -25,6 +26,28 @@ export function Layout() {
   useEffect(() => {
     // A new page starts at the top, unless the browser is restoring a position.
     window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [location.pathname]);
+
+  // Keep the canonical and Open Graph URLs pointing at the public origin for
+  // whichever route is being viewed. A single-page app has to do this itself.
+  useEffect(() => {
+    const url = canonicalUrl(location.pathname);
+
+    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      document.head.appendChild(canonical);
+    }
+    canonical.href = url;
+
+    let ogUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
+    if (!ogUrl) {
+      ogUrl = document.createElement('meta');
+      ogUrl.setAttribute('property', 'og:url');
+      document.head.appendChild(ogUrl);
+    }
+    ogUrl.content = url;
   }, [location.pathname]);
 
   return (

@@ -1,30 +1,31 @@
 /** Shared CORS handling for every Edge Function. */
+import { parseAllowList, resolveAllowOrigin } from './origins.ts';
 
 const ALLOWED_HEADERS = 'authorization, x-client-info, apikey, content-type';
 
 export function corsHeaders(origin: string | null): Record<string, string> {
-  const allowList = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const allowList = parseAllowList(Deno.env.get('ALLOWED_ORIGINS'));
+  const allowOrigin = resolveAllowOrigin(origin, allowList);
 
-  // With no explicit allow-list the functions are open, which is what a public
-  // Scripture reader needs. Set ALLOWED_ORIGINS to lock them to your domains.
-  const allowOrigin =
-    allowList.length === 0 ? '*' : origin && allowList.includes(origin) ? origin : allowList[0];
-
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Headers': ALLOWED_HEADERS,
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
     'Access-Control-Max-Age': '86400',
+    // The answer depends on the request's Origin, so caches must not share it.
     Vary: 'Origin',
   };
+
+  // Omitting the header entirely is how a disallowed origin is refused; sending
+  // some other allowed origin back would be a confusing way to say the same
+  // thing.
+  if (allowOrigin) headers['Access-Control-Allow-Origin'] = allowOrigin;
+  return headers;
 }
 
 export function preflight(req: Request): Response | null {
   if (req.method !== 'OPTIONS') return null;
-  return new Response('ok', { headers: corsHeaders(req.headers.get('origin')) });
+  // 204 with no body is the correct answer to a preflight.
+  return new Response(null, { status: 204, headers: corsHeaders(req.headers.get('origin')) });
 }
 
 export function json(req: Request, body: unknown, status = 200): Response {

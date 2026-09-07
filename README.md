@@ -192,6 +192,37 @@ for and returns only that. Nothing is marked available on trust.
 
 ---
 
+## Deployment
+
+The app is a static single-page build. `vercel.json` sets the SPA rewrite that
+makes deep links work — without it, `/verse/romans/8/28`, `/saved` and both auth
+callback routes return 404 on any static host, which breaks email confirmation
+and password reset. It also sets long-lived caching for hashed assets and the
+Scripture data, and a small set of security headers.
+
+Set these in Vercel for the Production environment:
+
+| Variable | Value |
+| --- | --- |
+| `VITE_SUPABASE_URL` | your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | your Supabase anon key |
+| `VITE_SITE_URL` | the public origin, e.g. `https://your-app.vercel.app` |
+
+Nothing else belongs in Vercel. `GOOGLE_GENERATIVE_AI_API_KEY`, `ESV_API_KEY`,
+`API_BIBLE_KEY` and the service-role key are Supabase Edge Function secrets —
+anything Vite can read is compiled into the browser bundle.
+
+In Supabase, under **Authentication → URL Configuration**, set the Site URL to
+your production origin and add `https://your-app.vercel.app/**` plus
+`http://localhost:5173/**` as redirect URLs.
+
+### Moving to a custom domain
+
+No domain is named anywhere in the source. Changing where the app lives means
+updating, in order: the Vercel domain, `VITE_SITE_URL`, the Supabase Site URL
+and redirect list, and `ALLOWED_ORIGINS` if you have set it. Auth redirects use
+the origin the reader is actually on, so they need no change at all.
+
 ## Analytics
 
 The gtag snippet is installed once in `index.html` with `send_page_view: false`,
