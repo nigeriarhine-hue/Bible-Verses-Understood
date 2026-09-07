@@ -20,6 +20,7 @@ import { callerKey, isRateLimited } from '../_shared/store.ts';
 
 const MAX_QUESTION_CHARS = 800;
 const MAX_HISTORY_TURNS = 12;
+const MAX_SCRIPTURE_CHARS = 20_000;
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -49,6 +50,9 @@ Deno.serve(async (req) => {
     return failure(req, 'That question is a little long — could you shorten it?');
   }
   if (!scriptureText) return failure(req, 'The Scripture text for this passage is required.');
+  if (scriptureText.length > MAX_SCRIPTURE_CHARS) {
+    return failure(req, 'That passage is too long for one request. Try a shorter range.');
+  }
   if (!hasGeminiKey()) {
     return failure(req, 'Follow-up questions are not available: the commentary service is not configured.', 503, {
       code: 'commentary_not_configured',

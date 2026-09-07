@@ -25,6 +25,8 @@ import {
   writeStudyCache,
 } from '../_shared/store.ts';
 
+const MAX_SCRIPTURE_CHARS = 20_000;
+
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
@@ -50,6 +52,9 @@ Deno.serve(async (req) => {
 
   if (!reference) return failure(req, 'A Bible reference is required.');
   if (!scriptureText) return failure(req, 'The Scripture text for this passage is required.');
+  if (scriptureText.length > MAX_SCRIPTURE_CHARS) {
+    return failure(req, 'That passage is too long for one request. Try a shorter range.');
+  }
   if (!hasGeminiKey()) {
     return failure(req, "Today's devotional is not available: the commentary service is not configured.", 503, {
       code: 'commentary_not_configured',

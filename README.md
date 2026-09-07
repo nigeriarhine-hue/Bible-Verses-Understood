@@ -75,7 +75,7 @@ git-ignored.
 | --- | --- |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and follow-up.** |
 | `GEMINI_MODEL` | Optional model override. Defaults to `gemini-2.0-flash`. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Lets Edge Functions write the shared study cache. Optional; without it, caching is read-only. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Lets Edge Functions write the shared study cache. **Supabase injects this automatically** — you do not set it, and the `SUPABASE_` prefix is reserved so `supabase secrets set` would reject it. |
 | `ESV_API_KEY` | Optional. Unlocks the ESV through the Crossway API. |
 | `API_BIBLE_KEY` | Optional. Unlocks whichever translations your API.Bible key is authorised for. |
 | `ALLOWED_ORIGINS` | Optional comma-separated list to lock the functions to your domains. |
@@ -96,8 +96,11 @@ supabase db push                 # applies everything in supabase/migrations
 Then set the server secrets and deploy the functions:
 
 ```bash
+# SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected
+# into Edge Functions automatically; only your own keys need setting.
 supabase secrets set GOOGLE_GENERATIVE_AI_API_KEY=...
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...
+supabase secrets set ESV_API_KEY=...        # optional
+supabase secrets set API_BIBLE_KEY=...      # optional
 
 supabase functions deploy study
 supabase functions deploy followup

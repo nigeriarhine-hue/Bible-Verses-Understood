@@ -25,7 +25,9 @@ import {
 } from '../_shared/store.ts';
 
 const MODES: ExplanationMode[] = ['simple', 'deep', 'scholar'];
-const MAX_SCRIPTURE_CHARS = 12_000;
+// Comfortably above the Bible's longest chapter (Psalm 119, ~13,200
+// characters in the KJV), so any real passage can be studied whole.
+const MAX_SCRIPTURE_CHARS = 20_000;
 
 interface StudyResponse {
   reference: string;
