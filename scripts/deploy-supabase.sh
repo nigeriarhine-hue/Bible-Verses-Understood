@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+#
+# Links this repository to a Supabase project, applies the migrations, sets the
+# server-side secrets and deploys every Edge Function that exists here.
+#
+#   ./scripts/deploy-supabase.sh <project-ref>
+#
+# Run it from your own machine: it needs network access to supabase.co and a
+# Supabase login, neither of which a sandboxed CI or agent container has.
+#
+# It never prints a secret value.
+
+set -euo pipefail
+
+PROJECT_REF="${1:-}"
+if [ -z "$PROJECT_REF" ]; then
+  echo "Usage: ./scripts/deploy-supabase.sh <project-ref>"
+  echo "Find the ref in your Supabase dashboard URL, or in .env.local:"
+  echo "  VITE_SUPABASE_URL=https://<project-ref>.supabase.co"
+  exit 1
+fi
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
+
+command -v supabase >/dev/null 2>&1 || {
+  echo "The Supabase CLI is not installed."
+  echo "  macOS:  brew install supabase/tap/supabase"
+  echo "  npm:    npm install -g supabase"
+  echo "  other:  https://supabase.com/docs/guides/local-development/cli/getting-started"
+  exit 1
+}
+
+step "Reviewing migrations for anything destructive"
+npm run --silent audit:migrations
+
+step "Linking to project $PROJECT_REF"
+supabase link --project-ref "$PROJECT_REF"
+
+step "Applying migrations"
+echo "The CLI will show the plan and ask before it changes anything."
+supabase db push
+
+step "Setting Edge Function secrets"
+# SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected by
+# Supabase automatically; the SUPABASE_ prefix is reserved and cannot be set.
+if [ -f supabase/functions/.env ]; then
+  echo "Using supabase/functions/.env"
+  supabase secrets set --env-file supabase/functions/.env
+else
+  echo "No supabase/functions/.env found."
+  echo "Set the Gemini key now (input is hidden, and nothing is echoed):"
+  read -r -s -p "  GOOGLE_GENERATIVE_AI_API_KEY: " GEMINI_KEY; echo
+  if [ -n "$GEMINI_KEY" ]; then
+    supabase secrets set "GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_KEY"
+    unset GEMINI_KEY
+  else
+    echo "  Skipped — explanations will stay switched off until this is set."
+  fi
+fi
+
+step "Confirming which secret NAMES are configured (values are never shown)"
+supabase secrets list
+
+step "Deploying Edge Functions"
+for dir in supabase/functions/*/; do
+  name="$(basename "$dir")"
+  [ "$name" = "_shared" ] && continue
+  [ -f "$dir/index.ts" ] || continue
+  echo "  deploying $name"
+  supabase functions deploy "$name"
+done
+
+step "Checking the result"
+npm run --silent supabase:check || true
+
+printf '\nDone. If supabase:check reported everything green, the backend is live.\n'

@@ -9,8 +9,11 @@ dist-ssr/
 build/
 *.local
 
-# Environment — never commit real secrets
+# Environment — never commit real secrets.
+# .env.* already covers .env.local and every other variant; both are listed
+# explicitly so the intent is obvious to anyone reading this file.
 .env
+.env.local
 .env.*
 !.env.example
 

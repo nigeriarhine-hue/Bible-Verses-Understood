@@ -267,6 +267,15 @@ It creates two readers, proves neither can see, change, or delete the other's
 data, proves an anonymous visitor can read reference content but write nothing,
 and fails if RLS is off anywhere.
 
+A second suite walks the whole signed-in journey against real policies — profile
+and preferences created on sign-up, translation preference persisting, saving a
+verse, collections, study history across all six sources, and the Related
+Scripture trail — then proves a second reader can see none of it:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/user-journey.test.sql
+```
+
 Signed out, a reader's translation, history and study trail live in their own
 browser and are never sent anywhere. Life-situation text and follow-up questions
 are used to answer that one request and are not stored.
@@ -289,6 +298,8 @@ are used to answer that one request and are not stored.
 | `npm run bible:build` | Rebuild the bundled Scripture data |
 | `npm run db:types` | Regenerate database types from a local Supabase |
 | `npm run supabase:check` | Check a configured project: reachability, migrations, seeds, RLS, functions |
+| `npm run supabase:deploy` | Link, apply migrations, set secrets and deploy all five Edge Functions |
+| `npm run audit:migrations` | Report anything in the migrations that could destroy existing data |
 
 ---
 
