@@ -22,6 +22,7 @@ import { CommentaryError, getCachedStudy, getStudy } from '../lib/ai/client';
 import type { ExplanationMode, Study } from '../lib/ai/types';
 import { getBook } from '../lib/bible/books';
 import { pathToReference, referenceToPath } from '../lib/bible/reference';
+import { trackEvent } from '../lib/analytics';
 import { recordNavigation, saveStudy } from '../lib/library';
 import type { StudySource } from '../types/database';
 
@@ -69,6 +70,13 @@ export default function VersePage() {
       translation: passage.translation,
     };
     const cameFrom = visit(step, { reset: navigationState?.resetTrail });
+
+    trackEvent('verse_view', {
+      reference: passage.reference.reference,
+      translation: passage.translation,
+      mode: explanationMode,
+      source: navigationState?.source ?? 'search',
+    });
 
     record({
       reference: passage.reference.reference,

@@ -11,9 +11,15 @@ export function Layout() {
   const location = useLocation();
 
   // One page_view per navigation. The gtag config in index.html has
-  // send_page_view disabled so this is the only place they come from.
+  // send_page_view disabled, so this is the only place they come from.
+  //
+  // A short delay lets the page set its own document.title first (a study page
+  // titles itself once the passage arrives) and collapses rapid redirects into
+  // a single view.
   useEffect(() => {
-    trackPageView(location.pathname + location.search, document.title);
+    const path = location.pathname + location.search;
+    const timer = window.setTimeout(() => trackPageView(path, document.title), 400);
+    return () => window.clearTimeout(timer);
   }, [location.pathname, location.search]);
 
   useEffect(() => {

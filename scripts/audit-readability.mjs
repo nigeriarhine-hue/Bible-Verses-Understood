@@ -220,6 +220,37 @@ for (const [w, h, tag] of VIEWPORTS) {
         element: '',
       });
     }
+
+    // A dialog opened from a surface with backdrop-filter can end up positioned
+    // against that surface and clipped by it. Confirm it is whole and on screen.
+    const clipped = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) return null;
+      const rect = dialog.getBoundingClientRect();
+      const hidden =
+        rect.left < -1 ||
+        rect.top < -1 ||
+        rect.right > window.innerWidth + 1 ||
+        rect.bottom > window.innerHeight + 1;
+      // Its backdrop should cover the viewport, not just the panel it opened from.
+      const backdrop = dialog.parentElement?.firstElementChild;
+      const backdropRect = backdrop?.getBoundingClientRect();
+      const covers =
+        backdropRect &&
+        backdropRect.width >= window.innerWidth - 1 &&
+        backdropRect.height >= window.innerHeight - 1;
+      return { hidden, covers: Boolean(covers), rect: { w: Math.round(rect.width), h: Math.round(rect.height) } };
+    });
+    if (clipped && (clipped.hidden || !clipped.covers)) {
+      findings.push({
+        route: interaction.name,
+        viewport: tag,
+        kind: 'dialog-clipped',
+        detail: clipped.hidden ? 'dialog extends outside the viewport' : 'backdrop does not cover the viewport',
+        element: `[role="dialog"] ${clipped.rect.w}×${clipped.rect.h}`,
+      });
+    }
+
     for (const problem of await page.evaluate(audit)) {
       findings.push({ route: interaction.name, viewport: tag, ...problem });
     }

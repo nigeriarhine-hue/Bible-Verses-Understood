@@ -47,9 +47,7 @@ playwright-report/
 test-results/
 screenshots/
 
-# Local throwaway helpers used while developing (not part of the project)
-/.shot.mjs
-/.flow.mjs
-/.crop.mjs
-/.menu.mjs
+# Local throwaway helpers used while developing (not part of the project).
+# The audits that matter live in scripts/ and are committed.
+/.*.mjs
 /.devserver.sh

@@ -47,10 +47,18 @@ function gtag(...args: GtagArgs): void {
 export function trackPageView(path: string, title?: string): void {
   gtag('config', GA_MEASUREMENT_ID, {
     page_path: path,
-    page_location: typeof window !== 'undefined' ? window.location.href : undefined,
+    page_location: currentHref(),
     page_title: title,
     send_page_view: true,
   });
+}
+
+function currentHref(): string | undefined {
+  try {
+    return window.location?.href;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

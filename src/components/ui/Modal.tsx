@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 
 interface ModalProps {
@@ -50,7 +51,11 @@ export function Modal({ open, onClose, title, description, children, footer }: M
 
   if (!open) return null;
 
-  return (
+  // Rendered into <body>. Several of the surfaces this modal opens from use
+  // backdrop-filter, which makes them the containing block for fixed-position
+  // descendants — a dialog rendered in place would be positioned against the
+  // card and clipped by its overflow.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
       <button
         type="button"
@@ -83,6 +88,7 @@ export function Modal({ open, onClose, title, description, children, footer }: M
         <div className="mt-4">{children}</div>
         {footer ? <div className="mt-5 flex flex-wrap gap-2">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

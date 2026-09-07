@@ -89,6 +89,16 @@ export default function GuidancePage() {
     };
   }, [submitted, translation]);
 
+  // The model is asked for a "What You're Facing" section; keep it separate so
+  // it is not repeated alongside the summary, and so it leads the page.
+  const facingHeading = /what\s+you.?re\s+facing/i;
+  const modelFacing = guidance?.sections.find((section) => facingHeading.test(section.heading));
+  const remainingSections = guidance?.sections.filter((section) => section !== modelFacing) ?? [];
+  const facing =
+    guidance && (guidance.situationSummary || modelFacing)
+      ? { body: modelFacing && modelFacing.body !== guidance.situationSummary ? modelFacing.body : '' }
+      : null;
+
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = situation.trim();
@@ -187,10 +197,15 @@ export default function GuidancePage() {
           </div>
         ) : guidance ? (
           <>
-            {guidance.situationSummary ? (
+            {/* "What You're Facing" comes before the passage; everything else
+                follows it, so the page reads in the order the product sets out. */}
+            {facing ? (
               <section className="glass p-5 sm:p-6">
                 <h2 className="display text-[1.25rem] leading-tight">What You’re Facing</h2>
-                <p className="prose-study mt-3">{guidance.situationSummary}</p>
+                {guidance.situationSummary ? (
+                  <p className="prose-study mt-3">{guidance.situationSummary}</p>
+                ) : null}
+                {facing.body ? <LinkedProse text={facing.body} className="prose-study mt-3" /> : null}
               </section>
             ) : null}
 
@@ -211,7 +226,7 @@ export default function GuidancePage() {
               </>
             ) : null}
 
-            {guidance.sections.map((section) => (
+            {remainingSections.map((section) => (
               <section key={section.heading} className="glass p-5 sm:p-6">
                 <h3 className="display text-[1.25rem] leading-tight">{section.heading}</h3>
                 <LinkedProse text={section.body} className="prose-study mt-3" />
