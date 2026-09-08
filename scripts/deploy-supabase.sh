@@ -66,16 +66,28 @@ step "Setting Edge Function secrets"
 if [ -f supabase/functions/.env ]; then
   echo "Using supabase/functions/.env"
   $SUPABASE secrets set --env-file supabase/functions/.env
-else
+elif [ -t 0 ]; then
   echo "No supabase/functions/.env found."
-  echo "Set the Gemini key now (input is hidden, and nothing is echoed):"
-  read -r -s -p "  GOOGLE_GENERATIVE_AI_API_KEY: " GEMINI_KEY; echo
+  echo "Set the Gemini key now (input is hidden, and nothing is echoed)."
+  echo "Press Enter to skip."
+  # `read` returns non-zero at EOF, which would abort the whole script under
+  # `set -e` — after the migrations had already been applied but before any
+  # function was deployed. Never let it decide whether we continue.
+  GEMINI_KEY=""
+  read -r -s -p "  GOOGLE_GENERATIVE_AI_API_KEY: " GEMINI_KEY || true
+  echo
   if [ -n "$GEMINI_KEY" ]; then
     $SUPABASE secrets set "GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_KEY"
     unset GEMINI_KEY
   else
-    echo "  Skipped — explanations will stay switched off until this is set."
+    echo "  Skipped — explanations stay switched off until this secret is set."
   fi
+else
+  # No terminal to prompt at: say so plainly and carry on to the deployment
+  # rather than appearing to hang or dying half-way.
+  echo "No supabase/functions/.env and no terminal to prompt at."
+  echo "  Skipping the secret. Set it later with:"
+  echo "    $SUPABASE secrets set GOOGLE_GENERATIVE_AI_API_KEY=..."
 fi
 
 step "Confirming which secret NAMES are configured (values are never shown)"
