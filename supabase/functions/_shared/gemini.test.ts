@@ -18,20 +18,46 @@ const PROMPT = 'PRIVATE USER PROMPT: explain this verse.';
 
 let requests: Array<{ url: string; init: RequestInit }> = [];
 
-/** Answers the next call with this payload and a 200. */
-function respondWith(payload: unknown): void {
+/** Answers each call with the next reply in turn; the last one repeats. */
+function respondInTurn(replies: Array<{ status?: number; body: unknown }>): void {
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string, init: RequestInit) => {
       requests.push({ url, init });
+      const reply = replies[Math.min(requests.length - 1, replies.length - 1)]!;
       return Promise.resolve(
-        new Response(JSON.stringify(payload), {
-          status: 200,
+        new Response(typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body), {
+          status: reply.status ?? 200,
           headers: { 'Content-Type': 'application/json' },
         }),
       );
     }),
   );
+}
+
+/** Answers every call with this payload and a 200. */
+function respondWith(payload: unknown): void {
+  respondInTurn([{ body: payload }]);
+}
+
+/** The error envelope Google returns when a model has no capacity. */
+const overloaded = {
+  status: 503,
+  body: { error: { code: 503, message: 'The model is overloaded. Please try again later.', status: 'UNAVAILABLE' } },
+};
+
+/** The model each request was addressed to, in order. */
+const modelsCalled = () =>
+  requests.map((r) => /models\/([^:]+):generateContent/.exec(r.url)?.[1] ?? '');
+
+/** Runs with GEMINI_MODEL and GEMINI_FALLBACK_MODEL set to these values. */
+function withModels(primary?: string, fallback?: string): void {
+  const values: Record<string, string | undefined> = {
+    GOOGLE_GENERATIVE_AI_API_KEY: KEY,
+    GEMINI_MODEL: primary,
+    GEMINI_FALLBACK_MODEL: fallback,
+  };
+  vi.stubGlobal('Deno', { env: { get: (name: string) => values[name] } });
 }
 
 /** A candidate that stopped for `finishReason` carrying these parts. */
@@ -248,5 +274,138 @@ describe('parseJson', () => {
 
   it('never returns a partial object when the salvage window will not parse', () => {
     expect(() => parseJson('{ "a": {broken} }')).toThrow(GeminiError);
+  });
+});
+
+describe('an overloaded model falls back once', () => {
+  const answer = { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } };
+
+  it('retries the same request on GEMINI_FALLBACK_MODEL and succeeds', async () => {
+    withModels('gemini-3.6-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([overloaded, answer]);
+
+    await expect(generateJson(ask({ maxOutputTokens: 6144 }))).resolves.toEqual({ meaning: 'ok' });
+    expect(modelsCalled()).toEqual(['gemini-3.6-flash', 'gemini-3.5-flash-lite']);
+    // The retry is the same request, not a reduced one.
+    expect(requests[1]?.init.body).toBe(requests[0]?.init.body);
+    const body = JSON.parse(String(requests[1]?.init.body));
+    expect(body.generationConfig.responseMimeType).toBe('application/json');
+    expect(body.generationConfig.maxOutputTokens).toBe(6144);
+  });
+
+  it('recognises UNAVAILABLE by name even under a different status', async () => {
+    withModels('gemini-3.6-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([
+      { status: 500, body: { error: { code: 500, message: 'overloaded', status: 'UNAVAILABLE' } } },
+      answer,
+    ]);
+    await expect(generateJson(ask())).resolves.toEqual({ meaning: 'ok' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('retries only once, then reports both models as busy', async () => {
+    withModels('gemini-3.6-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([overloaded]);
+
+    const error = await generateJson(ask()).catch((e: unknown) => e);
+    expect(requests).toHaveLength(2);
+    expect((error as GeminiError).status).toBe(503);
+    expect((error as GeminiError).message).toMatch(
+      /busy right now — both gemini-3\.6-flash and gemini-3\.5-flash-lite are overloaded/,
+    );
+    expect((error as GeminiError).message).toMatch(/try again in a moment/i);
+  });
+
+  it('names the secret when the fallback model itself is not usable', async () => {
+    withModels('gemini-3.6-flash', 'gemini-typo-flash');
+    respondInTurn([
+      overloaded,
+      { status: 404, body: { error: { code: 404, message: 'models/gemini-typo-flash is not found.', status: 'NOT_FOUND' } } },
+    ]);
+
+    const error = await generateJson(ask()).catch((e: unknown) => e);
+    expect((error as GeminiError).status).toBe(502);
+    expect((error as GeminiError).message).toContain('GEMINI_FALLBACK_MODEL (gemini-typo-flash)');
+    expect((error as GeminiError).message).toContain('is not found');
+  });
+
+  it('logs the switch without the key', async () => {
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    withModels('gemini-3.6-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([overloaded, answer]);
+    await generateJson(ask());
+
+    const written = warned.mock.calls.flat().map(String).join(' ');
+    expect(written).toMatch(/gemini-3\.6-flash is overloaded — retrying once on gemini-3\.5-flash-lite/);
+    expect(written).not.toContain(KEY);
+    expect(written).not.toContain(SYSTEM);
+    expect(written).not.toContain(PROMPT);
+  });
+});
+
+describe('what is never retried', () => {
+  const single = (status: number, body: unknown) => {
+    withModels('gemini-3.6-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([{ status, body }]);
+  };
+
+  it.each([
+    [400, 'INVALID_ARGUMENT', 502],
+    [401, 'UNAUTHENTICATED', 502],
+    [403, 'PERMISSION_DENIED', 502],
+    [404, 'NOT_FOUND', 502],
+    [429, 'RESOURCE_EXHAUSTED', 429],
+    [500, 'INTERNAL', 502],
+  ])('leaves HTTP %i (%s) on the primary model', async (status, reported, expected) => {
+    single(status, { error: { code: status, message: 'nope', status: reported } });
+    const error = await generateJson(ask()).catch((e: unknown) => e);
+
+    expect(requests).toHaveLength(1);
+    expect(modelsCalled()).toEqual(['gemini-3.6-flash']);
+    expect((error as GeminiError).status).toBe(expected);
+    expect((error as GeminiError).overloaded).toBe(false);
+    expect((error as GeminiError).message).toContain(`returned ${status}`);
+  });
+
+  it('does not retry when no fallback is configured', async () => {
+    withModels('gemini-3.6-flash', undefined);
+    respondInTurn([overloaded]);
+
+    const error = await generateJson(ask()).catch((e: unknown) => e);
+    expect(requests).toHaveLength(1);
+    expect((error as GeminiError).status).toBe(503);
+    expect((error as GeminiError).message).toMatch(/busy right now \(gemini-3\.6-flash is overloaded\)/);
+    expect((error as GeminiError).message).toMatch(/try again in a moment/i);
+  });
+
+  it('does not retry when the fallback secret is blank', async () => {
+    withModels('gemini-3.6-flash', '   ');
+    respondInTurn([overloaded]);
+    await expect(generateJson(ask())).rejects.toThrow(/is overloaded/);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('does not retry the same model against itself', async () => {
+    withModels('gemini-3.6-flash', 'gemini-3.6-flash');
+    respondInTurn([overloaded]);
+    await expect(generateJson(ask())).rejects.toThrow(/is overloaded/);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats a non-JSON 503 body as an overload all the same', async () => {
+    withModels('gemini-3.6-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([
+      { status: 503, body: '<html>Service Unavailable</html>' },
+      { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } },
+    ]);
+    await expect(generateJson(ask())).resolves.toEqual({ meaning: 'ok' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('honours GEMINI_MODEL as the primary', async () => {
+    withModels('gemini-3.7-flash', 'gemini-3.5-flash-lite');
+    respondInTurn([{ body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } }]);
+    await generateJson(ask());
+    expect(modelsCalled()).toEqual(['gemini-3.7-flash']);
   });
 });

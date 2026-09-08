@@ -9,7 +9,16 @@ const DEFAULT_MODEL = 'gemini-3.6-flash';
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export class GeminiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+    /**
+     * True only when the model itself was overloaded. That is the single
+     * failure worth trying on a different model — a rejected key, a refused
+     * permission or a malformed request would fail identically everywhere.
+     */
+    readonly overloaded = false,
+  ) {
     super(message);
     this.name = 'GeminiError';
   }
@@ -59,6 +68,11 @@ interface GeminiResponse {
   promptFeedback?: { blockReason?: string };
 }
 
+/** The envelope the Generative Language API returns on a failure. */
+interface GeminiApiError {
+  error?: { code?: number; message?: string; status?: string };
+}
+
 interface GeminiResult {
   text: string;
   finishReason: string;
@@ -68,6 +82,66 @@ interface GeminiResult {
   /** Part counts, so a parse failure can say what the shape of the reply was. */
   partCount: number;
   thoughtPartCount: number;
+}
+
+/**
+ * One attempt against one named model.
+ *
+ * Overload is the only failure marked retryable. Google reports it as HTTP 503
+ * carrying `"status": "UNAVAILABLE"`; either signal on its own is enough.
+ */
+async function callModel(model: string, key: string, body: unknown): Promise<GeminiResponse> {
+  const res = await fetch(`${API_ROOT}/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+  });
+
+  if (res.ok) return (await res.json()) as GeminiResponse;
+
+  const detail = await res.text().catch(() => '');
+  let reported = '';
+  try {
+    reported = (JSON.parse(detail) as GeminiApiError).error?.status ?? '';
+  } catch {
+    // An error body is not always JSON, and the HTTP status still decides.
+  }
+
+  if (res.status === 503 || reported === 'UNAVAILABLE') {
+    throw new GeminiError(
+      `The commentary service is busy right now (${model} is overloaded). ` +
+        `Please try again in a moment.`,
+      503,
+      true,
+    );
+  }
+
+  // Everything else is reported as it came. Google's own wording is what made
+  // the retired-model failure diagnosable, so it is kept rather than flattened.
+  throw new GeminiError(
+    `The commentary service returned ${res.status}. ${detail.slice(0, 400)}`,
+    res.status === 429 ? 429 : 502,
+  );
+}
+
+/** The reader-facing failure when the primary and the fallback both fail. */
+function bothModelsFailed(model: string, fallbackModel: string, retryError: unknown): GeminiError {
+  if (retryError instanceof GeminiError && !retryError.overloaded) {
+    // The fallback is not usable at all, which is a configuration problem
+    // rather than a busy one. Name the secret so it can be corrected.
+    return new GeminiError(
+      `The commentary service is busy, and the fallback model could not be used. ` +
+        `${model} was overloaded, and GEMINI_FALLBACK_MODEL (${fallbackModel}) failed: ` +
+        `${retryError.message}`,
+      502,
+    );
+  }
+  return new GeminiError(
+    `The commentary service is busy right now — both ${model} and ${fallbackModel} are ` +
+      `overloaded. Please try again in a moment.`,
+    503,
+    true,
+  );
 }
 
 /** Calls Gemini and returns the candidate text along with why it stopped. */
@@ -80,6 +154,7 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
     );
   }
   const model = Deno.env.get('GEMINI_MODEL') ?? DEFAULT_MODEL;
+  const fallbackModel = Deno.env.get('GEMINI_FALLBACK_MODEL')?.trim() ?? '';
   const maxOutputTokens = options.maxOutputTokens ?? 4096;
 
   const contents = [
@@ -106,21 +181,30 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
     ],
   };
 
-  const res = await fetch(`${API_ROOT}/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    throw new GeminiError(
-      `The commentary service returned ${res.status}. ${detail.slice(0, 400)}`,
-      res.status === 429 ? 429 : 502,
-    );
+  let payload: GeminiResponse;
+  try {
+    payload = await callModel(model, key, body);
+  } catch (error) {
+    // One retry, on a different model, for an overloaded model only. Anything
+    // else is a property of the request or the key rather than of capacity, so
+    // repeating it elsewhere would just fail twice and cost twice.
+    if (
+      !(error instanceof GeminiError) ||
+      !error.overloaded ||
+      !fallbackModel ||
+      fallbackModel === model
+    ) {
+      throw error;
+    }
+    // Model names are configuration, not secrets. The key is never logged.
+    console.warn(`Gemini model ${model} is overloaded — retrying once on ${fallbackModel}.`);
+    try {
+      payload = await callModel(fallbackModel, key, body);
+    } catch (retryError) {
+      throw bothModelsFailed(model, fallbackModel, retryError);
+    }
   }
 
-  const payload = (await res.json()) as GeminiResponse;
   const usage = payload.usageMetadata ?? {};
   const candidate = payload.candidates?.[0];
   const finishReason = candidate?.finishReason ?? '';

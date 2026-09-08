@@ -64,7 +64,11 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
       /* keep the default message */
     }
     if (res.status === 429) code = 'rate_limited';
-    if (res.status === 503 && code !== 'not_configured') code = 'not_configured';
+    // 503 is not on its own a sign of a missing key: an overloaded model
+    // answers with one too, and that is worth a retry. Every function that
+    // really is unconfigured says so with the code above, so trust that alone —
+    // otherwise a busy model hides the "Try again" button behind
+    // "Explanations are not switched on yet".
     throw new CommentaryError(message, code);
   }
 

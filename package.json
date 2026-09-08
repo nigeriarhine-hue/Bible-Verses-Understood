@@ -20,7 +20,8 @@
     "supabase:check": "node scripts/check-supabase.mjs",
     "audit:migrations": "node scripts/audit-migrations.mjs",
     "supabase:deploy": "bash scripts/deploy-supabase.sh",
-    "gemini:test": "node scripts/test-gemini.mjs"
+    "gemini:test": "node scripts/test-gemini.mjs",
+    "gemini:models": "node scripts/list-gemini-models.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

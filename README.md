@@ -75,6 +75,7 @@ git-ignored.
 | --- | --- |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and follow-up.** |
 | `GEMINI_MODEL` | Optional model override. Defaults to `gemini-3.6-flash`. |
+| `GEMINI_FALLBACK_MODEL` | Optional. Tried once, and only when the primary model answers HTTP 503 / `UNAVAILABLE`. Confirm the name first with `npm run gemini:models -- --check <model>`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Lets Edge Functions write the shared study cache. **Supabase injects this automatically** — you do not set it, and the `SUPABASE_` prefix is reserved so `supabase secrets set` would reject it. |
 | `ESV_API_KEY` | Optional. Unlocks the ESV through the Crossway API. |
 | `API_BIBLE_KEY` | Optional. Unlocks whichever translations your API.Bible key is authorised for. |
@@ -82,6 +83,25 @@ git-ignored.
 
 > A service-role key or a Gemini key with a `VITE_` prefix would be compiled into
 > the browser bundle. Never do that.
+
+#### When a model is overloaded
+
+A popular Gemini model answers HTTP 503 `UNAVAILABLE` under load. Set
+`GEMINI_FALLBACK_MODEL` and that one failure is retried once on the second
+model, with the same request; everything else — a rejected key, a refused
+permission, a malformed request, a model that no longer exists — is reported
+straight back, because it would fail the same way on any model. If both are
+busy the reader gets a plain "try again in a moment" and a working retry
+button.
+
+Choose a fallback that is lighter or older than your primary, so it is not
+waiting on the same capacity, and confirm the name against your own key before
+setting it — model availability differs by key and by API version:
+
+```bash
+npm run gemini:models -- --key <your-gemini-key>
+npm run gemini:models -- --key <your-gemini-key> --check gemini-3.5-flash-lite
+```
 
 ---
 
