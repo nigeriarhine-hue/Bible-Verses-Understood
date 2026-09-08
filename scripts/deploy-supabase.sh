@@ -25,36 +25,53 @@ cd "$ROOT"
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 
-command -v supabase >/dev/null 2>&1 || {
-  echo "The Supabase CLI is not installed."
+# Prefer an installed CLI; otherwise fall back to npx, which pulls a working
+# binary from npm without needing a global install.
+if command -v supabase >/dev/null 2>&1; then
+  SUPABASE="supabase"
+elif command -v npx >/dev/null 2>&1; then
+  echo "No supabase on PATH — using npx (it will fetch the CLI on first use)."
+  SUPABASE="npx --yes supabase"
+else
+  echo "The Supabase CLI is not available and npx is missing."
   echo "  macOS:  brew install supabase/tap/supabase"
   echo "  npm:    npm install -g supabase"
   echo "  other:  https://supabase.com/docs/guides/local-development/cli/getting-started"
   exit 1
-}
+fi
+
+# Every command needs an access token. Fail here with the fix rather than
+# halfway through a deployment.
+if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ] && [ ! -f "$HOME/.supabase/access-token" ]; then
+  echo
+  echo "Not logged in to Supabase. Do one of:"
+  echo "  $SUPABASE login"
+  echo "  export SUPABASE_ACCESS_TOKEN=...   (from https://supabase.com/dashboard/account/tokens)"
+  exit 1
+fi
 
 step "Reviewing migrations for anything destructive"
 npm run --silent audit:migrations
 
 step "Linking to project $PROJECT_REF"
-supabase link --project-ref "$PROJECT_REF"
+$SUPABASE link --project-ref "$PROJECT_REF"
 
 step "Applying migrations"
 echo "The CLI will show the plan and ask before it changes anything."
-supabase db push
+$SUPABASE db push
 
 step "Setting Edge Function secrets"
 # SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected by
 # Supabase automatically; the SUPABASE_ prefix is reserved and cannot be set.
 if [ -f supabase/functions/.env ]; then
   echo "Using supabase/functions/.env"
-  supabase secrets set --env-file supabase/functions/.env
+  $SUPABASE secrets set --env-file supabase/functions/.env
 else
   echo "No supabase/functions/.env found."
   echo "Set the Gemini key now (input is hidden, and nothing is echoed):"
   read -r -s -p "  GOOGLE_GENERATIVE_AI_API_KEY: " GEMINI_KEY; echo
   if [ -n "$GEMINI_KEY" ]; then
-    supabase secrets set "GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_KEY"
+    $SUPABASE secrets set "GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_KEY"
     unset GEMINI_KEY
   else
     echo "  Skipped — explanations will stay switched off until this is set."
@@ -62,7 +79,7 @@ else
 fi
 
 step "Confirming which secret NAMES are configured (values are never shown)"
-supabase secrets list
+$SUPABASE secrets list
 
 step "Deploying Edge Functions"
 for dir in supabase/functions/*/; do
@@ -70,7 +87,7 @@ for dir in supabase/functions/*/; do
   [ "$name" = "_shared" ] && continue
   [ -f "$dir/index.ts" ] || continue
   echo "  deploying $name"
-  supabase functions deploy "$name"
+  $SUPABASE functions deploy "$name"
 done
 
 step "Checking the result"
