@@ -22,7 +22,9 @@ enabled = false
 enabled = true
 port = 54323
 
-[inbucket]
+# Local email testing for `supabase start`. Renamed from [inbucket] in newer
+# CLI versions; it has no effect on the deployed project.
+[local_smtp]
 enabled = true
 port = 54324
 
