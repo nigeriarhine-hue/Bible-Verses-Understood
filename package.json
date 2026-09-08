@@ -19,7 +19,8 @@
     "audit:readability": "node scripts/audit-readability.mjs",
     "supabase:check": "node scripts/check-supabase.mjs",
     "audit:migrations": "node scripts/audit-migrations.mjs",
-    "supabase:deploy": "bash scripts/deploy-supabase.sh"
+    "supabase:deploy": "bash scripts/deploy-supabase.sh",
+    "gemini:test": "node scripts/test-gemini.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

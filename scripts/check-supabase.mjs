@@ -258,14 +258,23 @@ for (const fn of ['study', 'devotional', 'situation', 'followup', 'scripture']) 
     if (!ourFunction) {
       return { ok: false, detail: `unclear answer (HTTP ${res.status}) — may not be deployed` };
     }
+    // This probe sends an empty body, so the function rejects it on a missing
+    // field before it ever looks at the Gemini key. A 400 here proves the
+    // function is deployed and says nothing about whether the key is set —
+    // `npm run gemini:test` is what answers that.
     return {
       ok: true,
       detail: body.includes('commentary_not_configured')
         ? 'deployed, but GOOGLE_GENERATIVE_AI_API_KEY is not set'
-        : `deployed (HTTP ${res.status})`,
+        : `deployed (HTTP ${res.status}; key status not probed)`,
     };
   });
 }
 
-console.log(failures === 0 ? '\nEverything checks out.' : `\n${failures} check(s) failed — see above.`);
+if (failures === 0) {
+  console.log('\nEverything checks out.');
+  console.log('This does not cover Gemini: run `npm run gemini:test` for a real explanation.');
+} else {
+  console.log(`\n${failures} check(s) failed — see above.`);
+}
 process.exit(failures === 0 ? 0 : 1);
