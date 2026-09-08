@@ -103,7 +103,7 @@ for dir in supabase/functions/*/; do
 done
 
 step "Checking the result"
-npm run --silent supabase:check || true
+npm run --silent supabase:check -- --ref "$PROJECT_REF" || true
 
 cat <<'NOTE'
 

@@ -13,6 +13,7 @@
  * Never prints the key.
  */
 import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,13 +32,62 @@ function loadEnv() {
   return env;
 }
 
+function argValue(name) {
+  const index = process.argv.indexOf(`--${name}`);
+  return index > -1 ? process.argv[index + 1] : undefined;
+}
+
+/**
+ * Asks the CLI for the project's anon key. Only reached when a ref is known but
+ * no key is configured — which is the normal state of a fresh clone, since
+ * .env.local is deliberately not in the repository.
+ */
+function anonKeyFromCli(ref) {
+  for (const command of [
+    ['supabase', ['projects', 'api-keys', '--project-ref', ref, '-o', 'json']],
+    ['npx', ['--yes', 'supabase', 'projects', 'api-keys', '--project-ref', ref, '-o', 'json']],
+  ]) {
+    try {
+      const out = execFileSync(command[0], command[1], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+      const keys = JSON.parse(out);
+      const anon = keys.find?.((k) => k.name === 'anon');
+      if (anon?.api_key) return anon.api_key;
+    } catch {
+      // Try the next way in, then give up quietly.
+    }
+  }
+  return '';
+}
+
 const env = loadEnv();
-const url = (env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
-const key = env.VITE_SUPABASE_ANON_KEY ?? '';
+const ref = argValue('ref');
+
+let url = (argValue('url') ?? process.env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
+if (!url && ref) url = `https://${ref}.supabase.co`;
+
+let key = argValue('key') ?? process.env.SUPABASE_ANON_KEY ?? env.VITE_SUPABASE_ANON_KEY ?? '';
+if (!key && ref) {
+  console.log('No anon key configured locally — asking the Supabase CLI for it...\n');
+  key = anonKeyFromCli(ref);
+}
 
 if (!url || !key) {
-  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.');
-  console.error('Copy .env.example to .env.local and fill both in.');
+  console.error('Could not work out which project to check.');
+  console.error('');
+  console.error('Give it a project ref:');
+  console.error('  npm run supabase:check -- --ref <project-ref>');
+  console.error('');
+  console.error('Or put the values in .env.local (copy .env.example first):');
+  console.error('  VITE_SUPABASE_URL=');
+  console.error('  VITE_SUPABASE_ANON_KEY=');
+  if (ref && !key) {
+    console.error('');
+    console.error(`A ref was given but the CLI could not supply an anon key for "${ref}".`);
+    console.error('Run `supabase login` first, or pass the key with --key.');
+  }
   process.exit(1);
 }
 
