@@ -5,7 +5,7 @@
  * is never sent to, or referenced by, the browser bundle.
  */
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export class GeminiError extends Error {

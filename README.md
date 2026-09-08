@@ -74,7 +74,7 @@ git-ignored.
 | Variable | Purpose |
 | --- | --- |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and follow-up.** |
-| `GEMINI_MODEL` | Optional model override. Defaults to `gemini-2.0-flash`. |
+| `GEMINI_MODEL` | Optional model override. Defaults to `gemini-3.6-flash`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Lets Edge Functions write the shared study cache. **Supabase injects this automatically** — you do not set it, and the `SUPABASE_` prefix is reserved so `supabase secrets set` would reject it. |
 | `ESV_API_KEY` | Optional. Unlocks the ESV through the Crossway API. |
 | `API_BIBLE_KEY` | Optional. Unlocks whichever translations your API.Bible key is authorised for. |
