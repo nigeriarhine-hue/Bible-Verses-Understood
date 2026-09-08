@@ -40,14 +40,37 @@ else
   exit 1
 fi
 
-# Every command needs an access token. Fail here with the fix rather than
-# halfway through a deployment.
-if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ] && [ ! -f "$HOME/.supabase/access-token" ]; then
-  echo
-  echo "Not logged in to Supabase. Do one of:"
-  echo "  $SUPABASE login"
-  echo "  export SUPABASE_ACCESS_TOKEN=...   (from https://supabase.com/dashboard/account/tokens)"
-  exit 1
+# Every command needs an access token, so check before doing half a deployment.
+#
+# Ask the CLI rather than looking for a credentials file: where it keeps the
+# token depends on the version and the platform, and on macOS it uses the
+# Keychain, so there is no file to find. Guessing at a path tells people who
+# are perfectly well logged in that they are not.
+if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+  : # An explicit token always wins; nothing to check.
+else
+  step "Checking Supabase login"
+  if probe_output=$($SUPABASE projects list 2>&1); then
+    echo "  Logged in."
+  else
+    case "$probe_output" in
+      *"Access token not provided"*|*"not logged in"*|*AuthRequired*|*Unauthorized*|*"401"*)
+        echo
+        echo "Not logged in to Supabase. Do one of:"
+        echo "  $SUPABASE login"
+        echo "  export SUPABASE_ACCESS_TOKEN=...   (https://supabase.com/dashboard/account/tokens)"
+        exit 1
+        ;;
+      *)
+        # Something else went wrong — offline, an outage, a proxy. Not being
+        # able to run this check is no reason to refuse to deploy; the real
+        # commands below will report their own failures accurately.
+        echo "  Could not confirm login. The CLI said:"
+        echo "$probe_output" | head -3 | sed 's/^/    /'
+        echo "  Continuing anyway — the commands below will report if this matters."
+        ;;
+    esac
+  fi
 fi
 
 step "Reviewing migrations for anything destructive"
