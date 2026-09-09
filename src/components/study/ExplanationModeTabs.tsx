@@ -14,7 +14,7 @@ export function ExplanationModeTabs({
 }) {
   return (
     <div className="glass p-1.5" role="tablist" aria-label="Explanation depth">
-      <div className="grid gap-1.5 sm:grid-cols-3">
+      <div className="grid gap-1.5 sm:grid-cols-2">
         {EXPLANATION_MODES.map((entry) => {
           const active = entry.id === mode;
           return (

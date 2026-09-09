@@ -3,7 +3,6 @@ export type ExplanationMode = 'simple' | 'deep' | 'scholar';
 export const EXPLANATION_MODES: Array<{ id: ExplanationMode; label: string; blurb: string }> = [
   { id: 'simple', label: 'Simple Explanation', blurb: 'Plain meaning and how it touches everyday life.' },
   { id: 'deep', label: 'Deep Explanation', blurb: 'Context, key words, original language and application.' },
-  { id: 'scholar', label: 'Scholar Explanation', blurb: 'Authorship, genre, theology and where interpreters differ.' },
 ];
 
 export interface StudySection {
