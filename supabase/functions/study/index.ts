@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       prompt,
       schema: STUDY_SCHEMA,
       temperature: mode === 'scholar' ? 0.4 : 0.6,
-      maxOutputTokens: mode === 'simple' ? 2048 : 6144,
+      maxOutputTokens: mode === 'simple' ? 4096 : mode === 'deep' ? 8192 : 12288,
     });
 
     const related = Array.isArray(raw.relatedScripture)
