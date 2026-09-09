@@ -21,14 +21,15 @@ describe('analytics', () => {
     vi.unstubAllGlobals();
   });
 
-  it('sends one page_view per call, with page_view enabled', () => {
+  it('sends one explicit page_view event per call', () => {
     trackPageView('/verse/romans/8/28', 'Romans 8:28 — Bible Verses Understood');
     expect(sent).toHaveLength(1);
-    const [kind, id, params] = sent[0] as [string, string, Record<string, unknown>];
-    expect(kind).toBe('config');
-    expect(id).toBe('G-YT6WK8YMX9');
+    const [kind, eventName, params] = sent[0] as [string, string, Record<string, unknown>];
+    expect(kind).toBe('event');
+    expect(eventName).toBe('page_view');
     expect(params.page_path).toBe('/verse/romans/8/28');
-    expect(params.send_page_view).toBe(true);
+    expect(params.page_location).toBe('https://example.test/verse/romans/8/28');
+    expect(params.page_title).toBe('Romans 8:28 — Bible Verses Understood');
   });
 
   it('sends named events with their parameters', () => {

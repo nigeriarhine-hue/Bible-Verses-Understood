@@ -1,4 +1,3 @@
-import { GA_MEASUREMENT_ID } from './env';
 
 /**
  * Google Analytics 4.
@@ -45,11 +44,10 @@ function gtag(...args: GtagArgs): void {
 
 /** Sends one page_view for a client-side navigation. */
 export function trackPageView(path: string, title?: string): void {
-  gtag('config', GA_MEASUREMENT_ID, {
+  gtag('event', 'page_view', {
     page_path: path,
     page_location: currentHref(),
     page_title: title,
-    send_page_view: true,
   });
 }
 
