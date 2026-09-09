@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GeminiError, generateJson, generateText, parseJson } from './gemini';
+import { GeminiError, generateJson, generateText, parseJson, resetLearnedLimits } from './gemini';
+import { DEFAULT_MAX_OUTPUT_TOKENS, outputTokensFor, resetTokenWarnings } from './tokens';
 
 /**
  * The live `study` function reported "malformed JSON" for every request, which
@@ -52,13 +53,12 @@ const modelsCalled = () =>
 
 /** Runs with GEMINI_MODEL and GEMINI_FALLBACK_MODEL set to these values. */
 function withModels(primary?: string, fallback?: string): void {
-  const values: Record<string, string | undefined> = {
-    GOOGLE_GENERATIVE_AI_API_KEY: KEY,
-    GEMINI_MODEL: primary,
-    GEMINI_FALLBACK_MODEL: fallback,
-  };
-  vi.stubGlobal('Deno', { env: { get: (name: string) => values[name] } });
+  withEnv({ GEMINI_MODEL: primary, GEMINI_FALLBACK_MODEL: fallback });
 }
+
+/** The maxOutputTokens each request asked for, in order. */
+const budgetsAsked = () =>
+  requests.map((r) => JSON.parse(String(r.init.body)).generationConfig.maxOutputTokens as number);
 
 /** A candidate that stopped for `finishReason` carrying these parts. */
 function candidate(parts: Array<{ text?: string; thought?: boolean }>, finishReason = 'STOP') {
@@ -72,9 +72,17 @@ const ask = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
+/** Runs with these secrets set; the key is always present unless overridden. */
+function withEnv(env: Record<string, string | undefined> = {}): void {
+  const values: Record<string, string | undefined> = { GOOGLE_GENERATIVE_AI_API_KEY: KEY, ...env };
+  vi.stubGlobal('Deno', { env: { get: (name: string) => values[name] } });
+}
+
 beforeEach(() => {
   requests = [];
-  vi.stubGlobal('Deno', { env: { get: (name: string) => (name === 'GOOGLE_GENERATIVE_AI_API_KEY' ? KEY : undefined) } });
+  resetLearnedLimits();
+  resetTokenWarnings();
+  withEnv();
 });
 
 afterEach(() => {
@@ -119,7 +127,7 @@ describe('a reasoning part alongside the answer', () => {
 });
 
 describe('why generation stopped is checked before the text is parsed', () => {
-  it('reports a truncated response as truncated, naming the limit', async () => {
+  it('reports a truncation that even the ceiling could not finish', async () => {
     respondWith({
       ...candidate([{ text: '{"meaning":"The Lord is my shep' }], 'MAX_TOKENS'),
       usageMetadata: { promptTokenCount: 900, candidatesTokenCount: 40, thoughtsTokenCount: 2008 },
@@ -128,7 +136,8 @@ describe('why generation stopped is checked before the text is parsed', () => {
     expect(error).toBeInstanceOf(GeminiError);
     const message = (error as GeminiError).message;
     expect(message).toMatch(/ran out of output tokens/i);
-    expect(message).toContain('2048');
+    // The limit it names is the one the last attempt actually used.
+    expect(message).toContain(String(DEFAULT_MAX_OUTPUT_TOKENS));
     expect(message).toMatch(/2008 reasoning token\(s\)/);
     expect(message).not.toMatch(/malformed/i);
     expect((error as GeminiError).status).toBe(502);
@@ -363,7 +372,7 @@ describe('what is never retried', () => {
     expect(requests).toHaveLength(1);
     expect(modelsCalled()).toEqual(['gemini-3.6-flash']);
     expect((error as GeminiError).status).toBe(expected);
-    expect((error as GeminiError).overloaded).toBe(false);
+    expect((error as GeminiError).retry).toBe('none');
     expect((error as GeminiError).message).toContain(`returned ${status}`);
   });
 
@@ -407,5 +416,256 @@ describe('what is never retried', () => {
     respondInTurn([{ body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } }]);
     await generateJson(ask());
     expect(modelsCalled()).toEqual(['gemini-3.7-flash']);
+  });
+});
+
+describe('output token budgets', () => {
+  const answer = { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } };
+
+  it('no longer falls back to 4096 when a caller names nothing', async () => {
+    respondInTurn([answer]);
+    await generateJson(ask());
+    expect(budgetsAsked()).toEqual([outputTokensFor('standard')]);
+    expect(budgetsAsked()[0]).toBeGreaterThan(4096);
+  });
+
+  it.each([
+    ['standard', 16_384],
+    ['long', 32_768],
+    ['maximum', 65_536],
+  ] as const)('sends %s as %i tokens', async (budget, expected) => {
+    respondInTurn([answer]);
+    await generateJson({ ...ask(), budget });
+    expect(budgetsAsked()).toEqual([expected]);
+  });
+
+  it('keeps an explicit request inside the ceiling', async () => {
+    respondInTurn([answer]);
+    await generateJson(ask({ maxOutputTokens: 999_999 }));
+    expect(budgetsAsked()).toEqual([DEFAULT_MAX_OUTPUT_TOKENS]);
+  });
+
+  it('follows GEMINI_MAX_OUTPUT_TOKENS down for a smaller model', async () => {
+    withEnv({ GEMINI_MAX_OUTPUT_TOKENS: '8192' });
+    respondInTurn([answer]);
+    await generateJson({ ...ask(), budget: 'maximum' });
+    expect(budgetsAsked()).toEqual([8192]);
+  });
+
+  it('sends no thinking configuration unless one is asked for', async () => {
+    respondInTurn([answer]);
+    await generateJson(ask());
+    expect(JSON.parse(String(requests[0]?.init.body)).generationConfig.thinkingConfig).toBeUndefined();
+  });
+
+  it.each(['low', 'high', 'HIGH'])('passes GEMINI_THINKING_LEVEL=%s through', async (level) => {
+    withEnv({ GEMINI_THINKING_LEVEL: level });
+    respondInTurn([answer]);
+    await generateJson(ask());
+    expect(JSON.parse(String(requests[0]?.init.body)).generationConfig.thinkingConfig).toEqual({
+      thinkingLevel: level.toLowerCase(),
+    });
+  });
+
+  it('ignores a GEMINI_THINKING_LEVEL the API does not define', async () => {
+    withEnv({ GEMINI_THINKING_LEVEL: 'maximum-effort' });
+    respondInTurn([answer]);
+    await generateJson(ask());
+    expect(JSON.parse(String(requests[0]?.init.body)).generationConfig.thinkingConfig).toBeUndefined();
+  });
+});
+
+describe('a truncated answer is retried once at the ceiling', () => {
+  const answer = { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } };
+  const truncated = {
+    body: {
+      candidates: [{ content: { parts: [{ text: '{"meaning":"cut off' }] }, finishReason: 'MAX_TOKENS' }],
+      usageMetadata: { candidatesTokenCount: 1884, thoughtsTokenCount: 2197 },
+    },
+  };
+
+  it('escalates straight to the ceiling and returns the finished answer', async () => {
+    respondInTurn([truncated, answer]);
+    await expect(generateJson(ask({ maxOutputTokens: 4096 }))).resolves.toEqual({ meaning: 'ok' });
+    expect(budgetsAsked()).toEqual([4096, DEFAULT_MAX_OUTPUT_TOKENS]);
+  });
+
+  it('escalates from a named budget too', async () => {
+    respondInTurn([truncated, answer]);
+    await expect(generateJson({ ...ask(), budget: 'standard' })).resolves.toEqual({ meaning: 'ok' });
+    expect(budgetsAsked()).toEqual([outputTokensFor('standard'), DEFAULT_MAX_OUTPUT_TOKENS]);
+  });
+
+  it('retries once and only once, however long the truncation persists', async () => {
+    respondInTurn([truncated]);
+    await expect(generateJson(ask({ maxOutputTokens: 4096 }))).rejects.toThrow(/ran out of output tokens/i);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('does not retry a request that already used the ceiling', async () => {
+    respondInTurn([truncated]);
+    const error = await generateJson({ ...ask(), budget: 'maximum' }).catch((e: unknown) => e);
+    expect(requests).toHaveLength(1);
+    expect((error as GeminiError).retry).toBe('more-tokens');
+    expect((error as GeminiError).message).toContain(String(DEFAULT_MAX_OUTPUT_TOKENS));
+  });
+
+  it('never hands back the partial JSON it did receive', async () => {
+    respondInTurn([truncated]);
+    const error = await generateJson({ ...ask(), budget: 'maximum' }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(GeminiError);
+    expect((error as GeminiError).message).not.toMatch(/malformed/i);
+    expect((error as GeminiError).message).toMatch(/1884 output token\(s\)/);
+    expect((error as GeminiError).message).toMatch(/2197 reasoning token\(s\)/);
+  });
+
+  it('does not stack with the model fallback beyond one of each', async () => {
+    withEnv({ GEMINI_MODEL: 'gemini-3.6-flash', GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash-lite' });
+    // Overloaded on the primary, truncated on the fallback, for ever.
+    respondInTurn([overloaded, truncated]);
+    await expect(generateJson({ ...ask(), budget: 'standard' })).rejects.toThrow(/ran out of output tokens/i);
+    // Three calls, not four: the escalation starts again on the primary, and a
+    // truncation is not an overload, so the model fallback is not taken again.
+    // Each retry is a one-shot on its own axis and they do not multiply.
+    expect(modelsCalled()).toEqual([
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+    ]);
+    expect(budgetsAsked()).toEqual([
+      outputTokensFor('standard'),
+      outputTokensFor('standard'),
+      DEFAULT_MAX_OUTPUT_TOKENS,
+    ]);
+  });
+});
+
+describe('a limit the API itself rejects', () => {
+  const answer = { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } };
+  const tooHigh = (max: number) => ({
+    status: 400,
+    body: {
+      error: {
+        code: 400,
+        message: `Invalid value at 'generation_config.max_output_tokens' (must be <= ${max})`,
+        status: 'INVALID_ARGUMENT',
+      },
+    },
+  });
+
+  it('is corrected to the value the API named, not back to 4096', async () => {
+    respondInTurn([tooHigh(24_576), answer]);
+    await expect(generateJson({ ...ask(), budget: 'maximum' })).resolves.toEqual({ meaning: 'ok' });
+    expect(budgetsAsked()).toEqual([DEFAULT_MAX_OUTPUT_TOKENS, 24_576]);
+  });
+
+  it('is remembered, so the next request starts inside the limit', async () => {
+    respondInTurn([tooHigh(24_576), answer]);
+    await generateJson({ ...ask(), budget: 'maximum' });
+    requests.length = 0;
+    respondInTurn([answer]);
+    await generateJson({ ...ask(), budget: 'maximum' });
+    expect(budgetsAsked()).toEqual([24_576]);
+  });
+
+  it('is corrected at most once, so a stubborn rejection cannot loop', async () => {
+    respondInTurn([tooHigh(24_576)]);
+    await expect(generateJson({ ...ask(), budget: 'maximum' })).rejects.toThrow(/returned 400/);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('leaves an unrelated 400 alone', async () => {
+    respondInTurn([
+      { status: 400, body: { error: { code: 400, message: 'Invalid JSON payload', status: 'INVALID_ARGUMENT' } } },
+    ]);
+    await expect(generateJson(ask())).rejects.toThrow(/returned 400/);
+    expect(requests).toHaveLength(1);
+  });
+});
+
+describe('a thinking level the model will not take', () => {
+  const answer = { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }] } };
+  const refused = {
+    status: 400,
+    body: {
+      error: {
+        code: 400,
+        message: 'thinking_level is not supported for this model.',
+        status: 'INVALID_ARGUMENT',
+      },
+    },
+  };
+
+  it('is dropped and the request resent, rather than failing every explanation', async () => {
+    withEnv({ GEMINI_THINKING_LEVEL: 'high' });
+    respondInTurn([refused, answer]);
+    await expect(generateJson(ask())).resolves.toEqual({ meaning: 'ok' });
+
+    expect(JSON.parse(String(requests[0]?.init.body)).generationConfig.thinkingConfig).toEqual({
+      thinkingLevel: 'high',
+    });
+    expect(JSON.parse(String(requests[1]?.init.body)).generationConfig.thinkingConfig).toBeUndefined();
+  });
+
+  it('is remembered, so later requests never send it again', async () => {
+    withEnv({ GEMINI_THINKING_LEVEL: 'high' });
+    respondInTurn([refused, answer]);
+    await generateJson(ask());
+    requests.length = 0;
+    respondInTurn([answer]);
+    await generateJson(ask());
+    expect(JSON.parse(String(requests[0]?.init.body)).generationConfig.thinkingConfig).toBeUndefined();
+  });
+
+  it('cannot loop when the rejection has nothing to do with thinking', async () => {
+    withEnv({ GEMINI_THINKING_LEVEL: 'high' });
+    respondInTurn([
+      { status: 400, body: { error: { code: 400, message: 'Invalid JSON payload', status: 'INVALID_ARGUMENT' } } },
+    ]);
+    await expect(generateJson(ask())).rejects.toThrow(/returned 400/);
+    expect(requests).toHaveLength(1);
+  });
+});
+
+describe('optional usage logging', () => {
+  const answer = { body: { candidates: [{ content: { parts: [{ text: '{"meaning":"ok"}' }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 900, candidatesTokenCount: 1884, thoughtsTokenCount: 2197, totalTokenCount: 4981 } } };
+
+  it('says nothing unless GEMINI_LOG_USAGE is set', async () => {
+    const logged = vi.spyOn(console, 'log').mockImplementation(() => {});
+    respondInTurn([answer]);
+    await generateJson(ask());
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  it('reports the model, the limit and the token counts when it is', async () => {
+    const logged = vi.spyOn(console, 'log').mockImplementation(() => {});
+    withEnv({ GEMINI_MODEL: 'gemini-3.6-flash', GEMINI_LOG_USAGE: '1' });
+    respondInTurn([answer]);
+    await generateJson({ ...ask(), budget: 'long' });
+
+    expect(JSON.parse(String(logged.mock.calls[0]?.[1]))).toEqual({
+      model: 'gemini-3.6-flash',
+      maxOutputTokens: outputTokensFor('long'),
+      ceiling: DEFAULT_MAX_OUTPUT_TOKENS,
+      finishReason: 'STOP',
+      promptTokenCount: 900,
+      candidatesTokenCount: 1884,
+      thoughtsTokenCount: 2197,
+      totalTokenCount: 4981,
+    });
+  });
+
+  it('logs no key, no prompt and no answer text', async () => {
+    const logged = vi.spyOn(console, 'log').mockImplementation(() => {});
+    withEnv({ GEMINI_LOG_USAGE: '1' });
+    respondInTurn([answer]);
+    await generateJson(ask({ history: [{ role: 'user', text: 'PRIVATE EARLIER TURN' }] }));
+
+    const written = logged.mock.calls.flat().map(String).join(' ');
+    expect(written).not.toContain(KEY);
+    expect(written).not.toContain(SYSTEM);
+    expect(written).not.toContain(PROMPT);
+    expect(written).not.toContain('PRIVATE EARLIER TURN');
+    expect(written).not.toContain('meaning');
   });
 });

@@ -3,21 +3,41 @@
  *
  * The API key lives only in this runtime — it is set as a Supabase secret and
  * is never sent to, or referenced by, the browser bundle.
+ *
+ * Output token budgets are not decided here. They come from tokens.ts, which is
+ * the single authority, so no caller can reintroduce a small limit of its own.
  */
+import {
+  ABSOLUTE_MAX_OUTPUT_TOKENS,
+  clampOutputTokens,
+  MIN_OUTPUT_TOKENS,
+  outputCeiling,
+  outputTokensFor,
+  type OutputBudget,
+} from './tokens.ts';
 
 const DEFAULT_MODEL = 'gemini-3.6-flash';
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+/** What, if anything, is worth trying again after a failure. */
+export type RetryHint =
+  /** Nothing would come out differently. Report it. */
+  | 'none'
+  /** The model had no capacity. A different model may. */
+  | 'other-model'
+  /** The answer was cut off. A larger budget may finish it. */
+  | 'more-tokens';
 
 export class GeminiError extends Error {
   constructor(
     message: string,
     readonly status: number,
     /**
-     * True only when the model itself was overloaded. That is the single
-     * failure worth trying on a different model — a rejected key, a refused
-     * permission or a malformed request would fail identically everywhere.
+     * Which single retry, if any, this failure justifies. Each is taken at most
+     * once — a rejected key, a refused permission or a malformed request would
+     * fail identically however many times it is sent.
      */
-    readonly overloaded = false,
+    readonly retry: RetryHint = 'none',
   ) {
     super(message);
     this.name = 'GeminiError';
@@ -34,6 +54,9 @@ interface GenerateOptions {
   /** A JSON schema; when given, the model is asked for structured JSON. */
   schema?: Record<string, unknown>;
   temperature?: number;
+  /** Which shared budget this request needs. Defaults to 'standard'. */
+  budget?: OutputBudget;
+  /** An explicit limit, still clamped to the shared ceiling. Rarely needed. */
   maxOutputTokens?: number;
   /** Prior turns, oldest first. */
   history?: Array<{ role: 'user' | 'model'; text: string }>;
@@ -85,48 +108,162 @@ interface GeminiResult {
 }
 
 /**
- * One attempt against one named model.
+ * What this deployment has learned from the API about its own limits.
  *
- * Overload is the only failure marked retryable. Google reports it as HTTP 503
- * carrying `"status": "UNAVAILABLE"`; either signal on its own is enough.
+ * Both are corrections the API itself supplied, so they are trusted over the
+ * configured values and reused for the life of the isolate rather than
+ * rediscovered on every request.
  */
-async function callModel(model: string, key: string, body: unknown): Promise<GeminiResponse> {
-  const res = await fetch(`${API_ROOT}/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify(body),
-  });
+let learnedCeiling = 0;
+let thinkingConfigRejected = false;
 
-  if (res.ok) return (await res.json()) as GeminiResponse;
+/** Forgets what the API taught us. Tests only. */
+export function resetLearnedLimits(): void {
+  learnedCeiling = 0;
+  thinkingConfigRejected = false;
+}
 
-  const detail = await res.text().catch(() => '');
-  let reported = '';
-  try {
-    reported = (JSON.parse(detail) as GeminiApiError).error?.status ?? '';
-  } catch {
-    // An error body is not always JSON, and the HTTP status still decides.
-  }
+/**
+ * The reasoning effort to ask for, when the deployment asks for one at all.
+ *
+ * Left unset by default, which leaves the model to scale its own reasoning to
+ * the question — the behaviour the site runs on today. It is worth setting only
+ * to rein in a model that reasons more than a task warrants; the budget is
+ * generous enough that reasoning no longer crowds out the answer either way.
+ * An unsupported value is dropped rather than allowed to fail every request.
+ */
+function thinkingLevel(): string {
+  if (thinkingConfigRejected) return '';
+  const level = Deno.env.get('GEMINI_THINKING_LEVEL')?.trim().toLowerCase() ?? '';
+  return level === 'low' || level === 'high' ? level : '';
+}
 
-  if (res.status === 503 || reported === 'UNAVAILABLE') {
+function requestBody(options: GenerateOptions, maxOutputTokens: number): Record<string, unknown> {
+  const level = thinkingLevel();
+  return {
+    contents: [
+      ...(options.history ?? []).map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
+      { role: 'user', parts: [{ text: options.prompt }] },
+    ],
+    systemInstruction: { parts: [{ text: options.system }] },
+    generationConfig: {
+      temperature: options.temperature ?? 0.6,
+      topP: 0.95,
+      maxOutputTokens,
+      ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
+      ...(options.schema
+        ? { responseMimeType: 'application/json', responseSchema: options.schema }
+        : {}),
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  };
+}
+
+/**
+ * The largest output limit named in a rejection, when the API is telling us our
+ * own was too high. Returns 0 when the message is about something else.
+ */
+function acceptedCeilingFrom(message: string): number {
+  if (!/max_?output_?tokens/i.test(message)) return 0;
+  const numbers = [...message.matchAll(/\d[\d,_]*/g)]
+    .map((match) => Number(match[0].replace(/[,_]/g, '')))
+    .filter((value) => Number.isInteger(value) && value >= MIN_OUTPUT_TOKENS && value <= ABSOLUTE_MAX_OUTPUT_TOKENS);
+  return numbers.length ? Math.max(...numbers) : 0;
+}
+
+/** True when a rejection is about the thinking configuration we added. */
+function rejectsThinkingConfig(message: string): boolean {
+  return /thinking(_?level|_?budget|_?config)/i.test(message);
+}
+
+/**
+ * One HTTP call to one named model, repaired at most once.
+ *
+ * A 400 that names our own output limit or thinking configuration is the API
+ * telling us the request is malformed in a way we can correct, so the
+ * correction is remembered and the call is resent — exactly once, so a
+ * persistent rejection cannot loop. Everything else is reported as it came.
+ */
+async function callModel(
+  model: string,
+  key: string,
+  options: GenerateOptions,
+  maxOutputTokens: number,
+): Promise<GeminiResponse> {
+  let budget = learnedCeiling ? Math.min(maxOutputTokens, learnedCeiling) : maxOutputTokens;
+  let repaired = false;
+
+  for (;;) {
+    const res = await fetch(`${API_ROOT}/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(requestBody(options, budget)),
+    });
+
+    if (res.ok) return (await res.json()) as GeminiResponse;
+
+    const detail = await res.text().catch(() => '');
+    let reported = '';
+    let message = detail;
+    try {
+      const parsed = (JSON.parse(detail) as GeminiApiError).error;
+      reported = parsed?.status ?? '';
+      message = parsed?.message ?? detail;
+    } catch {
+      // An error body is not always JSON, and the HTTP status still decides.
+    }
+
+    if (res.status === 503 || reported === 'UNAVAILABLE') {
+      throw new GeminiError(
+        `The commentary service is busy right now (${model} is overloaded). ` +
+          `Please try again in a moment.`,
+        503,
+        'other-model',
+      );
+    }
+
+    // A rejection we can act on, taken once. Beyond that the request is simply
+    // invalid and pretending otherwise would spin.
+    if (res.status === 400 && !repaired) {
+      const accepted = acceptedCeilingFrom(message);
+      if (accepted && accepted < budget) {
+        learnedCeiling = accepted;
+        budget = accepted;
+        repaired = true;
+        console.warn(
+          `${model} refused maxOutputTokens ${maxOutputTokens}; using ${accepted}, ` +
+            `which it named as its limit. Set GEMINI_MAX_OUTPUT_TOKENS to ${accepted} to skip this.`,
+        );
+        continue;
+      }
+      if (!thinkingConfigRejected && thinkingLevel() && rejectsThinkingConfig(message)) {
+        thinkingConfigRejected = true;
+        repaired = true;
+        console.warn(
+          `${model} refused the GEMINI_THINKING_LEVEL setting; sending the request without it. ` +
+            `Unset that secret, or use a value this model supports.`,
+        );
+        continue;
+      }
+    }
+
+    // Everything else is reported as it came. Google's own wording is what made
+    // the retired-model failure diagnosable, so it is kept rather than flattened.
     throw new GeminiError(
-      `The commentary service is busy right now (${model} is overloaded). ` +
-        `Please try again in a moment.`,
-      503,
-      true,
+      `The commentary service returned ${res.status}. ${detail.slice(0, 400)}`,
+      res.status === 429 ? 429 : 502,
     );
   }
-
-  // Everything else is reported as it came. Google's own wording is what made
-  // the retired-model failure diagnosable, so it is kept rather than flattened.
-  throw new GeminiError(
-    `The commentary service returned ${res.status}. ${detail.slice(0, 400)}`,
-    res.status === 429 ? 429 : 502,
-  );
 }
 
 /** The reader-facing failure when the primary and the fallback both fail. */
 function bothModelsFailed(model: string, fallbackModel: string, retryError: unknown): GeminiError {
-  if (retryError instanceof GeminiError && !retryError.overloaded) {
+  if (retryError instanceof GeminiError && retryError.retry !== 'other-model') {
     // The fallback is not usable at all, which is a configuration problem
     // rather than a busy one. Name the secret so it can be corrected.
     return new GeminiError(
@@ -140,12 +277,17 @@ function bothModelsFailed(model: string, fallbackModel: string, retryError: unkn
     `The commentary service is busy right now — both ${model} and ${fallbackModel} are ` +
       `overloaded. Please try again in a moment.`,
     503,
-    true,
+    'other-model',
   );
 }
 
-/** Calls Gemini and returns the candidate text along with why it stopped. */
-async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
+/**
+ * One generation at one budget, across the primary model and its fallback.
+ *
+ * Everything about *why* a response is unusable is decided here, before any
+ * caller sees the text.
+ */
+async function attempt(options: GenerateOptions, maxOutputTokens: number): Promise<GeminiResult> {
   const key = Deno.env.get('GOOGLE_GENERATIVE_AI_API_KEY');
   if (!key) {
     throw new GeminiError(
@@ -155,42 +297,17 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
   }
   const model = Deno.env.get('GEMINI_MODEL') ?? DEFAULT_MODEL;
   const fallbackModel = Deno.env.get('GEMINI_FALLBACK_MODEL')?.trim() ?? '';
-  const maxOutputTokens = options.maxOutputTokens ?? 4096;
-
-  const contents = [
-    ...(options.history ?? []).map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
-    { role: 'user', parts: [{ text: options.prompt }] },
-  ];
-
-  const body: Record<string, unknown> = {
-    contents,
-    systemInstruction: { parts: [{ text: options.system }] },
-    generationConfig: {
-      temperature: options.temperature ?? 0.6,
-      topP: 0.95,
-      maxOutputTokens,
-      ...(options.schema
-        ? { responseMimeType: 'application/json', responseSchema: options.schema }
-        : {}),
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-    ],
-  };
 
   let payload: GeminiResponse;
   try {
-    payload = await callModel(model, key, body);
+    payload = await callModel(model, key, options, maxOutputTokens);
   } catch (error) {
     // One retry, on a different model, for an overloaded model only. Anything
     // else is a property of the request or the key rather than of capacity, so
     // repeating it elsewhere would just fail twice and cost twice.
     if (
       !(error instanceof GeminiError) ||
-      !error.overloaded ||
+      error.retry !== 'other-model' ||
       !fallbackModel ||
       fallbackModel === model
     ) {
@@ -199,7 +316,7 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
     // Model names are configuration, not secrets. The key is never logged.
     console.warn(`Gemini model ${model} is overloaded — retrying once on ${fallbackModel}.`);
     try {
-      payload = await callModel(fallbackModel, key, body);
+      payload = await callModel(fallbackModel, key, options, maxOutputTokens);
     } catch (retryError) {
       throw bothModelsFailed(model, fallbackModel, retryError);
     }
@@ -237,8 +354,9 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
         `The limit for this request was ${maxOutputTokens}; the model used ` +
         `${produced} output token(s)` +
         (thoughts ? ` and ${thoughts} reasoning token(s), which also count against the limit` : '') +
-        `. Raise maxOutputTokens for this request, or ask for a shorter response.`,
+        `. Please try again, or ask for a shorter answer.`,
       502,
+      'more-tokens',
     );
   }
   if (finishReason && finishReason !== 'STOP') {
@@ -255,7 +373,7 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
     );
   }
 
-  return {
+  const result: GeminiResult = {
     text,
     finishReason,
     usage,
@@ -263,6 +381,61 @@ async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
     partCount: parts.length,
     thoughtPartCount,
   };
+  logUsage(model, result);
+  return result;
+}
+
+/**
+ * One safe line per successful request, when GEMINI_LOG_USAGE is set.
+ *
+ * Off by default so the function logs stay readable; worth turning on to
+ * confirm what limit a deployment is really sending, and how much of it the
+ * reasoning is taking. Counts and configuration only — never the key, the
+ * headers, the prompt, or anything the reader wrote or received.
+ */
+function logUsage(model: string, result: GeminiResult): void {
+  if (!Deno.env.get('GEMINI_LOG_USAGE')?.trim()) return;
+  const { usage, finishReason, maxOutputTokens } = result;
+  console.log(
+    'Gemini usage:',
+    JSON.stringify({
+      model,
+      maxOutputTokens,
+      ceiling: outputCeiling(),
+      finishReason,
+      promptTokenCount: usage.promptTokenCount,
+      candidatesTokenCount: usage.candidatesTokenCount,
+      thoughtsTokenCount: usage.thoughtsTokenCount,
+      totalTokenCount: usage.totalTokenCount,
+    }),
+  );
+}
+
+/**
+ * Calls Gemini, escalating once if the answer was cut short.
+ *
+ * The escalation goes straight to the ceiling rather than climbing, so there is
+ * one retry and only one. A request that started at the ceiling has nowhere to
+ * go and reports the truncation instead.
+ */
+async function generateRaw(options: GenerateOptions): Promise<GeminiResult> {
+  const ceiling = outputCeiling();
+  const first =
+    options.maxOutputTokens === undefined
+      ? outputTokensFor(options.budget ?? 'standard')
+      : clampOutputTokens(options.maxOutputTokens);
+
+  try {
+    return await attempt(options, first);
+  } catch (error) {
+    if (!(error instanceof GeminiError) || error.retry !== 'more-tokens' || first >= ceiling) {
+      throw error;
+    }
+    console.warn(
+      `Gemini ran out of output tokens at ${first} — retrying once at the ceiling of ${ceiling}.`,
+    );
+    return await attempt(options, ceiling);
+  }
 }
 
 /** Calls Gemini and returns the raw text of the first candidate. */
@@ -293,6 +466,7 @@ function logParseFailure(result: GeminiResult): void {
   console.error(
     'Gemini response did not parse as JSON:',
     JSON.stringify({
+      model: Deno.env.get('GEMINI_MODEL') ?? DEFAULT_MODEL,
       finishReason: finishReason || '(none reported)',
       textLength: text.length,
       maxOutputTokens,

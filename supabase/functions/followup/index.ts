@@ -104,7 +104,9 @@ Deno.serve(async (req) => {
       schema: FOLLOWUP_SCHEMA,
       history,
       temperature: 0.6,
-      maxOutputTokens: 2048,
+      // A follow-up carries the prior turns as well as its own answer, related
+      // Scripture and the reasoning to get there, so it takes the long budget.
+      budget: 'long',
     });
 
     const answer = String(raw.answer ?? '').trim();

@@ -102,7 +102,10 @@ Deno.serve(async (req) => {
       prompt,
       schema: STUDY_SCHEMA,
       temperature: mode === 'scholar' ? 0.4 : 0.6,
-      maxOutputTokens: mode === 'simple' ? 4096 : mode === 'deep' ? 8192 : 12288,
+      // Scholar covers the most ground, so it gets the ceiling; the other two
+      // still have far more room than any explanation needs. Budgets are named
+      // rather than numbered so they cannot drift out of step with tokens.ts.
+      budget: mode === 'simple' ? 'standard' : mode === 'deep' ? 'long' : 'maximum',
     });
 
     const related = Array.isArray(raw.relatedScripture)

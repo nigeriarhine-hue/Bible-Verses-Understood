@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
       prompt,
       schema: DEVOTIONAL_SCHEMA,
       temperature: 0.7,
-      maxOutputTokens: 2560,
+      budget: 'standard',
     });
 
     const sections = Array.isArray(raw.sections)

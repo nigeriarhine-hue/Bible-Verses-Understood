@@ -94,7 +94,8 @@ Deno.serve(async (req) => {
       prompt: `The reader wrote: """${situation}"""\n\nThey are reading in the ${translation} translation.`,
       schema: SITUATION_SCHEMA,
       temperature: 0.6,
-      maxOutputTokens: 3072,
+      // Several sections plus the passage that fits the reader's situation.
+      budget: 'long',
     });
 
     const primary = validateRelated((raw.primaryReference ?? {}) as Record<string, unknown>);

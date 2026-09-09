@@ -76,6 +76,9 @@ git-ignored.
 | `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and follow-up.** |
 | `GEMINI_MODEL` | Optional model override. Defaults to `gemini-3.6-flash`. |
 | `GEMINI_FALLBACK_MODEL` | Optional. Tried once, and only when the primary model answers HTTP 503 / `UNAVAILABLE`. Confirm the name first with `npm run gemini:models -- --check <model>`. |
+| `GEMINI_MAX_OUTPUT_TOKENS` | Optional ceiling on output tokens per request. Defaults to `65536`, what `gemini-3.6-flash` accepts. Set it only for a model that accepts less. |
+| `GEMINI_THINKING_LEVEL` | Optional, `low` or `high`. Unset, the model scales its own reasoning to the question. |
+| `GEMINI_LOG_USAGE` | Optional. Set to anything to log model, limit, finish reason and token counts once per request. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Lets Edge Functions write the shared study cache. **Supabase injects this automatically** — you do not set it, and the `SUPABASE_` prefix is reserved so `supabase secrets set` would reject it. |
 | `ESV_API_KEY` | Optional. Unlocks the ESV through the Crossway API. |
 | `API_BIBLE_KEY` | Optional. Unlocks whichever translations your API.Bible key is authorised for. |
@@ -83,6 +86,27 @@ git-ignored.
 
 > A service-role key or a Gemini key with a `VITE_` prefix would be compiled into
 > the browser bundle. Never do that.
+
+#### Output token budgets
+
+Reasoning tokens are spent from the same budget as the answer, so a request
+capped at 4,096 could spend half of it thinking and then stop mid-sentence.
+[`supabase/functions/_shared/tokens.ts`](supabase/functions/_shared/tokens.ts)
+is the only place that decides these limits. Functions ask for a named budget,
+never a number:
+
+| Budget | Tokens | Used by |
+| --- | --- | --- |
+| `standard` | 16,384 | Simple Explanation, devotional |
+| `long` | 32,768 | Deep Explanation, follow-up questions, life-situation guidance |
+| `maximum` | ceiling (65,536) | Scholar Explanation |
+
+A budget is a ceiling, not a target — the prompts still ask for roughly 450-650
+words for Simple, 900-1300 for Deep and 1200-1800 for Scholar. If an answer is
+cut off anyway, the request is retried once at the ceiling and once only; a
+request that was already at the ceiling reports the truncation rather than
+returning half an answer. And if the API rejects the limit as too high, it
+names its own maximum, which is adopted and remembered.
 
 #### When a model is overloaded
 
