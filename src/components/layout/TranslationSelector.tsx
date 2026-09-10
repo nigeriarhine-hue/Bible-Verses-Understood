@@ -7,11 +7,11 @@ import { Icon } from '../ui/Icon';
  *
  * Changing it here keeps the reader exactly where they are — same passage, same
  * explanation mode, same trail — and re-fetches the text in the new version.
- * Only translations we can legally serve are selectable; the rest are listed
- * as unavailable rather than hidden, so the reader can see what is coming.
+ * Only translations we can legally serve are shown to readers.
+ * Unavailable translations remain in the catalogue for future licensing.
  */
 export function TranslationSelector({ variant = 'header' }: { variant?: 'header' | 'block' }) {
-  const { translation, translations, availableTranslations, setTranslation } = usePreferences();
+  const { translation, availableTranslations, setTranslation } = usePreferences();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -37,8 +37,6 @@ export function TranslationSelector({ variant = 'header' }: { variant?: 'header'
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open]);
-
-  const unavailable = translations.filter((t) => !t.isAvailable);
 
   return (
     <div ref={containerRef} className={variant === 'block' ? 'relative w-full' : 'relative'}>
@@ -106,28 +104,7 @@ export function TranslationSelector({ variant = 'header' }: { variant?: 'header'
             </button>
           ))}
 
-          {unavailable.length > 0 ? (
-            <>
-              <p className="mt-3 border-t border-white/10 px-3 pb-2 pt-3 text-ui-xs font-semibold uppercase tracking-wider muted">
-                Awaiting licensed access
-              </p>
-              <ul className="px-3 pb-2">
-                {unavailable.map((entry) => (
-                  <li
-                    key={entry.abbreviation}
-                    className="flex items-baseline gap-3 py-1 text-ui-xs muted"
-                  >
-                    <span className="w-14 shrink-0 font-semibold tracking-wide">{entry.abbreviation}</span>
-                    <span className="min-w-0 flex-1">{entry.name}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="px-3 pb-2 text-ui-xs muted">
-                These require a licence from their publishers. They will appear here once authorised
-                access is configured.
-              </p>
-            </>
-          ) : null}
+
         </div>
       ) : null}
     </div>
