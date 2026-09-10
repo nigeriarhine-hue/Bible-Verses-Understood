@@ -121,7 +121,7 @@ export function getAvailableTranslations(): Promise<TranslationInfo[]> {
       const base = TRANSLATION_CATALOGUE.map((t) => ({ ...t }));
       if (!FUNCTIONS_URL) return sortTranslations(base);
       try {
-        const remote = await cachedFetch<TranslationInfo[]>('bvu:translations', HOUR * 6, () =>
+        const remote = await cachedFetch<TranslationInfo[]>('bvu:translations:v2', HOUR * 6, () =>
           callScriptureFunction<{ translations: TranslationInfo[] }>({ action: 'translations' }).then(
             (r) => r.translations ?? [],
           ),
