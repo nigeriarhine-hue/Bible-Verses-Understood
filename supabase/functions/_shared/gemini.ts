@@ -58,6 +58,14 @@ interface GenerateOptions {
   budget?: OutputBudget;
   /** An explicit limit, still clamped to the shared ceiling. Rarely needed. */
   maxOutputTokens?: number;
+  /**
+   * How hard to let the model think about this one request. Set it where the
+   * task genuinely does not need much reasoning — a short, well-specified
+   * answer — and leave it off everywhere else. It overrides the deployment-wide
+   * GEMINI_THINKING_LEVEL, so lowering it for one feature never lowers it for
+   * the rest.
+   */
+  thinkingLevel?: 'low' | 'high';
   /** Prior turns, oldest first. */
   history?: Array<{ role: 'user' | 'model'; text: string }>;
 }
@@ -124,22 +132,25 @@ export function resetLearnedLimits(): void {
 }
 
 /**
- * The reasoning effort to ask for, when the deployment asks for one at all.
+ * The reasoning effort to ask for, when anything asks for one at all.
  *
- * Left unset by default, which leaves the model to scale its own reasoning to
- * the question — the behaviour the site runs on today. It is worth setting only
- * to rein in a model that reasons more than a task warrants; the budget is
- * generous enough that reasoning no longer crowds out the answer either way.
+ * The request decides first, then GEMINI_THINKING_LEVEL, then nothing — and
+ * nothing is the default, which leaves the model to scale its own reasoning to
+ * the question. Reasoning is billed and spent from the output budget, so asking
+ * for less of it where a task does not need it is the cheapest saving there is.
  * An unsupported value is dropped rather than allowed to fail every request.
  */
-function thinkingLevel(): string {
+function thinkingLevel(options: GenerateOptions): string {
   if (thinkingConfigRejected) return '';
+  if (options.thinkingLevel === 'low' || options.thinkingLevel === 'high') {
+    return options.thinkingLevel;
+  }
   const level = Deno.env.get('GEMINI_THINKING_LEVEL')?.trim().toLowerCase() ?? '';
   return level === 'low' || level === 'high' ? level : '';
 }
 
 function requestBody(options: GenerateOptions, maxOutputTokens: number): Record<string, unknown> {
-  const level = thinkingLevel();
+  const level = thinkingLevel(options);
   return {
     contents: [
       ...(options.history ?? []).map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
@@ -241,12 +252,12 @@ async function callModel(
         );
         continue;
       }
-      if (!thinkingConfigRejected && thinkingLevel() && rejectsThinkingConfig(message)) {
+      if (!thinkingConfigRejected && thinkingLevel(options) && rejectsThinkingConfig(message)) {
         thinkingConfigRejected = true;
         repaired = true;
         console.warn(
-          `${model} refused the GEMINI_THINKING_LEVEL setting; sending the request without it. ` +
-            `Unset that secret, or use a value this model supports.`,
+          `${model} refused the thinking level asked for; sending the request without it. ` +
+            `Use a value this model supports, in the request or in GEMINI_THINKING_LEVEL.`,
         );
         continue;
       }

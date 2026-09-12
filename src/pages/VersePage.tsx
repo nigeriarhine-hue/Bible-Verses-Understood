@@ -5,8 +5,6 @@ import { SaveVerseButton } from '../components/scripture/SaveVerseButton';
 import { ScriptureCard } from '../components/scripture/ScriptureCard';
 import { ShareButton } from '../components/scripture/ShareButton';
 import { BackToPrevious } from '../components/study/BackToPrevious';
-import { ExplanationModeTabs } from '../components/study/ExplanationModeTabs';
-import { FollowUpPanel } from '../components/study/FollowUpPanel';
 import { StudyTrail } from '../components/study/StudyTrail';
 import { StudyView } from '../components/study/StudyView';
 import { Icon } from '../components/ui/Icon';
@@ -19,7 +17,7 @@ import { usePassage } from '../hooks/useScripture';
 import { useSpeech } from '../hooks/useSpeech';
 import { useStudyHistory } from '../hooks/useStudyHistory';
 import { CommentaryError, getCachedStudy, getStudy } from '../lib/ai/client';
-import type { ExplanationMode, Study } from '../lib/ai/types';
+import { EXPLANATION_MODE, EXPLANATION_MODE_LABEL, type Study } from '../lib/ai/types';
 import { getBook } from '../lib/bible/books';
 import { pathToReference, referenceToPath } from '../lib/bible/reference';
 import { trackEvent } from '../lib/analytics';
@@ -27,16 +25,15 @@ import { recordNavigation, saveStudy } from '../lib/library';
 import type { StudySource } from '../types/database';
 
 /**
- * The study page: Scripture, then commentary, then where to go next.
+ * The study page: Scripture, then the explanation, then where to go next.
  *
- * Switching translation or explanation mode keeps the reader exactly here —
- * same passage, same trail, same conversation.
+ * Switching translation keeps the reader exactly here — same passage, same
+ * trail. There is one explanation, so there is nothing to choose between.
  */
 export default function VersePage() {
   const { bookId, chapter, verse } = useParams();
   const location = useLocation();
   const { translation } = usePreferences();
-  const { explanationMode, setExplanationMode } = usePreferences();
   const { user } = useAuth();
   const { notify } = useToast();
   const { trail, previous, visit } = useTrail();
@@ -74,14 +71,13 @@ export default function VersePage() {
     trackEvent('verse_view', {
       reference: passage.reference.reference,
       translation: passage.translation,
-      mode: explanationMode,
       source: navigationState?.source ?? 'search',
     });
 
     record({
       reference: passage.reference.reference,
       translation: passage.translation,
-      mode: explanationMode,
+      mode: EXPLANATION_MODE,
       source: navigationState?.source ?? 'search',
     });
 
@@ -108,9 +104,9 @@ export default function VersePage() {
   /* Commentary                                                            */
   /* --------------------------------------------------------------------- */
   const loadStudy = useCallback(
-    async (mode: ExplanationMode) => {
+    async () => {
       if (!passage) return;
-      const cached = getCachedStudy(passage.reference.reference, passage.translation, mode);
+      const cached = getCachedStudy(passage.reference.reference, passage.translation);
       if (cached) {
         setStudy(cached);
         setStudyError(null);
@@ -122,7 +118,6 @@ export default function VersePage() {
         const result = await getStudy(
           passage.reference.reference,
           passage.translation,
-          mode,
           passage.text,
         );
         setStudy(result);
@@ -144,9 +139,9 @@ export default function VersePage() {
 
   useEffect(() => {
     setStudy(null);
-    if (passage) void loadStudy(explanationMode);
+    if (passage) void loadStudy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passage?.reference.reference, passage?.translation, explanationMode]);
+  }, [passage?.reference.reference, passage?.translation]);
 
   const onSaveStudy = async () => {
     if (!study) return;
@@ -157,7 +152,7 @@ export default function VersePage() {
     setSavingStudy(true);
     try {
       await saveStudy(user.id, study);
-      notify(`Your ${study.mode} study of ${study.reference} is saved.`, 'success');
+      notify(`Your study of ${study.reference} is saved.`, 'success');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'That study could not be saved.', 'error');
     } finally {
@@ -230,40 +225,48 @@ export default function VersePage() {
           {/* -------------------------------------------------------------- */}
           {/* Explanation                                                     */}
           {/* -------------------------------------------------------------- */}
-          <ExplanationModeTabs mode={explanationMode} onChange={setExplanationMode} />
-
           {studyLoading ? (
             <div className="glass p-5 sm:p-6">
-              <p className="inline-flex items-center gap-2 text-ui-sm muted">
+              <h2 className="display text-[1.375rem] leading-tight sm:text-[1.5rem]">
+                {EXPLANATION_MODE_LABEL}
+              </h2>
+              <p className="mt-2 inline-flex items-center gap-2 text-ui-sm muted">
                 <Spinner className="h-4 w-4" />
-                Preparing the {explanationMode} explanation of {passage.reference.reference}…
+                Preparing the explanation of {passage.reference.reference}…
               </p>
               <div className="mt-4">
-                <LoadingLines lines={6} />
+                <LoadingLines lines={5} />
               </div>
             </div>
           ) : studyError ? (
             <CommentaryUnavailable
               message={studyError.message}
               code={studyError.code}
-              onRetry={() => void loadStudy(explanationMode)}
+              onRetry={() => void loadStudy()}
             />
           ) : study ? (
             <>
-              <div className="glass flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <p className="text-ui-xs leading-relaxed muted">
-                  Commentary generated for {study.reference} in the {study.translation}. The Scripture
-                  above is unchanged.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void onSaveStudy()}
-                  className="btn btn-secondary min-h-0 px-3.5 py-2 text-ui-xs"
-                  disabled={savingStudy}
-                >
-                  {savingStudy ? <Spinner className="h-4 w-4" /> : <Icon name="bookmark" className="h-4 w-4" />}
-                  Save this study
-                </button>
+              <div className="glass p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="display text-[1.375rem] leading-tight sm:text-[1.5rem]">
+                      {EXPLANATION_MODE_LABEL}
+                    </h2>
+                    <p className="mt-1.5 text-ui-xs leading-relaxed muted">
+                      Commentary written for {study.reference} in the {study.translation}. The
+                      Scripture above is unchanged.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void onSaveStudy()}
+                    className="btn btn-secondary min-h-0 shrink-0 px-3.5 py-2 text-ui-xs"
+                    disabled={savingStudy}
+                  >
+                    {savingStudy ? <Spinner className="h-4 w-4" /> : <Icon name="bookmark" className="h-4 w-4" />}
+                    Save this study
+                  </button>
+                </div>
               </div>
 
               <StudyView
@@ -278,13 +281,6 @@ export default function VersePage() {
                     'explanation',
                   )
                 }
-              />
-
-              <FollowUpPanel
-                reference={passage.reference.reference}
-                translation={passage.translation}
-                mode={explanationMode}
-                scriptureText={passage.text}
               />
             </>
           ) : null}

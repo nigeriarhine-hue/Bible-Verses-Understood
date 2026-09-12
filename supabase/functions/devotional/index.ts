@@ -62,8 +62,12 @@ Deno.serve(async (req) => {
   }
 
   const personalised = interests.length > 0;
-  // Personalised devotionals are not shared between readers, so they are only
-  // cached when they are the general version.
+  // A personalised devotional is written around what one reader said matters to
+  // them. It is never written to the shared cache and never read from it, so no
+  // other reader can be served it — that holds whatever it costs. The general
+  // version has nothing personal in it and is shared by everyone, which is
+  // where the saving comes from: one generation per passage and translation,
+  // not one per reader.
   const cacheKey = personalised
     ? null
     : await studyCacheKey(reference, translation, 'devotional', scriptureText);
@@ -85,10 +89,12 @@ Deno.serve(async (req) => {
     '"Today\'s Thought", "Deeper Reflection", "For Your Life",',
     '"One Small Action" (a single specific, achievable step today).',
     'Then a reflection question and a short prayer of three or four sentences.',
-    'Around 400-550 words in total across the sections.',
+    'Around 350-450 words in total across the sections. Be concise and do not',
+    'repeat between sections; stop when the thought is complete rather than',
+    'filling the space.',
     '',
     RELATED_SCRIPTURE_INSTRUCTION,
-    'Return 2-3 related passages.',
+    'Return 2 related passages.',
     '',
     'Return JSON matching the schema. Section bodies are plain prose with no',
     'Markdown formatting.',
@@ -108,6 +114,11 @@ Deno.serve(async (req) => {
       prompt,
       schema: DEVOTIONAL_SCHEMA,
       temperature: 0.7,
+      // A devotional is short reflective writing on a passage supplied in full,
+      // not analysis, so it does not need heavy reasoning either. Per request,
+      // so life-situation guidance — which does reason about what someone wrote
+      // — keeps the model's own judgement.
+      thinkingLevel: 'low',
       budget: 'standard',
     });
 

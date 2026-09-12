@@ -1,11 +1,15 @@
 /**
  * POST /functions/v1/study
  *
- * Writes the Simple, Deep or Scholar explanation for a passage that the caller
- * has already retrieved from a Bible source. This function never supplies Bible
- * text — it only comments on the text it is given.
+ * Writes the Simple Explanation for a passage that the caller has already
+ * retrieved from a Bible source. This function never supplies Bible text — it
+ * only comments on the text it is given.
  *
- * Body: { reference, translation, mode, scriptureText }
+ * Simple is the only explanation this endpoint generates. Deep and Scholar are
+ * refused here, before Gemini is called, rather than only hidden in the UI: a
+ * direct POST asking for one is a billable request otherwise.
+ *
+ * Body: { reference, translation, mode?, scriptureText }
  */
 import { failure, json, preflight } from '../_shared/cors.ts';
 import { GeminiError, generateJson, hasGeminiKey } from '../_shared/gemini.ts';
@@ -24,7 +28,10 @@ import {
   writeStudyCache,
 } from '../_shared/store.ts';
 
-const MODES: ExplanationMode[] = ['simple', 'deep', 'scholar'];
+/** The only mode that generates. Anything else is refused without a Gemini call. */
+const GENERATED_MODE: ExplanationMode = 'simple';
+/** Modes that existed before and are now retired, named so the refusal is clear. */
+const RETIRED_MODES = ['deep', 'scholar'];
 // Comfortably above the Bible's longest chapter (Psalm 119, ~13,200
 // characters in the KJV), so any real passage can be studied whole.
 const MAX_SCRIPTURE_CHARS = 20_000;
@@ -67,12 +74,23 @@ Deno.serve(async (req) => {
 
   const reference = String(body.reference ?? '').trim();
   const translation = String(body.translation ?? '').trim().toUpperCase();
-  const mode = String(body.mode ?? 'simple').toLowerCase() as ExplanationMode;
+  const mode = String(body.mode ?? GENERATED_MODE).toLowerCase();
   const scriptureText = String(body.scriptureText ?? '').trim();
 
   if (!reference) return failure(req, 'A Bible reference is required.');
   if (!translation) return failure(req, 'A translation is required.');
-  if (!MODES.includes(mode)) return failure(req, `Unknown explanation mode: ${mode}`);
+  // Refused here, above every other check and long before Gemini, so a direct
+  // request for a retired mode cannot cost anything.
+  if (mode !== GENERATED_MODE) {
+    return failure(
+      req,
+      RETIRED_MODES.includes(mode)
+        ? `The ${mode} explanation is no longer available. Request the simple explanation instead.`
+        : `Unknown explanation mode: ${mode}. Only the simple explanation is available.`,
+      400,
+      { code: 'mode_unavailable' },
+    );
+  }
   if (!scriptureText) return failure(req, 'The Scripture text for this passage is required.');
   if (scriptureText.length > MAX_SCRIPTURE_CHARS) {
     return failure(req, 'That passage is too long to study in one request. Try a shorter range.');
@@ -93,19 +111,23 @@ Deno.serve(async (req) => {
   const prompt = [
     scriptureBlock(reference, translation, scriptureText),
     '',
-    `Write the ${mode} explanation of ${reference} described in your instructions.`,
+    `Write the simple explanation of ${reference} described in your instructions.`,
   ].join('\n');
 
   try {
     const raw = await generateJson<Record<string, unknown>>({
-      system: studySystemPrompt(mode),
+      system: studySystemPrompt(),
       prompt,
       schema: STUDY_SCHEMA,
-      temperature: mode === 'scholar' ? 0.4 : 0.6,
-      // Scholar covers the most ground, so it gets the ceiling; the other two
-      // still have far more room than any explanation needs. Budgets are named
-      // rather than numbered so they cannot drift out of step with tokens.ts.
-      budget: mode === 'simple' ? 'standard' : mode === 'deep' ? 'long' : 'maximum',
+      temperature: 0.6,
+      // A 300-word explanation of a passage that is supplied in full does not
+      // need deep reasoning, and reasoning is both billed and spent from the
+      // output budget. Asked for here rather than deployment-wide, so nothing
+      // else loses reasoning by accident.
+      thinkingLevel: 'low',
+      // Still the standard tier, not a tight one. The prompt controls length;
+      // this is only the ceiling that stops reasoning from truncating a reply.
+      budget: 'standard',
     });
 
     const related = Array.isArray(raw.relatedScripture)
@@ -132,7 +154,7 @@ Deno.serve(async (req) => {
     const response: StudyResponse = {
       reference,
       translation,
-      mode,
+      mode: GENERATED_MODE,
       summary: String(raw.summary ?? '').trim(),
       sections,
       keyTerms: normaliseKeyTerms(raw.keyTerms),
@@ -142,7 +164,7 @@ Deno.serve(async (req) => {
       relatedScripture: related,
     };
 
-    await writeStudyCache(cacheKey, reference, translation, mode, response);
+    await writeStudyCache(cacheKey, reference, translation, GENERATED_MODE, response);
     return json(req, response);
   } catch (error) {
     if (error instanceof GeminiError) return failure(req, error.message, error.status);

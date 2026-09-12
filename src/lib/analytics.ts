@@ -28,7 +28,6 @@ export type AnalyticsEvent =
   | 'verse_view'
   | 'related_scripture_click'
   | 'bible_version_change'
-  | 'explanation_mode_change'
   | 'topic_selected'
   | 'devotional_view'
   | 'verse_saved'

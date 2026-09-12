@@ -3,9 +3,8 @@ import { FUNCTIONS_URL, SUPABASE_ANON_KEY, isCommentaryConfigured } from '../env
 import { supabase } from '../supabase';
 import {
   CommentaryError,
+  EXPLANATION_MODE,
   type Devotional,
-  type ExplanationMode,
-  type FollowUpAnswer,
   type SituationGuidance,
   type Study,
 } from './types';
@@ -75,44 +74,47 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function studyCacheKey(reference: string, translation: string, mode: ExplanationMode): string {
-  return `bvu:study:${mode}:${translation}:${reference}`;
+/**
+ * The `v2` is the format, not the passage.
+ *
+ * Explanations written before the 300-word rewrite are still sitting in
+ * readers' browsers under the old key and would otherwise be shown for another
+ * fortnight. The server-side cache is versioned the same way, by PROMPT_VERSION
+ * inside its key, so neither tier serves the old long format.
+ */
+export function studyCacheKey(reference: string, translation: string): string {
+  return `bvu:study:v2:${EXPLANATION_MODE}:${translation}:${reference}`;
 }
 
 /** Reads a study from the local cache without touching the network. */
-export function getCachedStudy(
-  reference: string,
-  translation: string,
-  mode: ExplanationMode,
-): Study | null {
-  return cacheGet<Study>(studyCacheKey(reference, translation, mode));
+export function getCachedStudy(reference: string, translation: string): Study | null {
+  return cacheGet<Study>(studyCacheKey(reference, translation));
 }
 
+/**
+ * The Simple Explanation for a passage.
+ *
+ * Three tiers stand between a reader and a billable request: this browser's
+ * cache, then the shared study_cache in Postgres that every reader benefits
+ * from, then Gemini. Only the third costs anything.
+ */
 export async function getStudy(
   reference: string,
   translation: string,
-  mode: ExplanationMode,
   scriptureText: string,
 ): Promise<Study> {
-  const key = studyCacheKey(reference, translation, mode);
+  const key = studyCacheKey(reference, translation);
   const cached = cacheGet<Study>(key);
   if (cached) return cached;
 
-  const study = await callFunction<Study>('study', { reference, translation, mode, scriptureText });
+  const study = await callFunction<Study>('study', {
+    reference,
+    translation,
+    mode: EXPLANATION_MODE,
+    scriptureText,
+  });
   cacheSet(key, study, STUDY_TTL);
   return study;
-}
-
-export async function askFollowUp(input: {
-  reference: string;
-  translation: string;
-  mode: ExplanationMode;
-  question: string;
-  scriptureText: string;
-  history: Array<{ role: 'user' | 'assistant'; content: string }>;
-}): Promise<FollowUpAnswer> {
-  // Deliberately not cached: a question is personal to the reader who asked it.
-  return callFunction<FollowUpAnswer>('followup', input);
 }
 
 export async function getDevotional(input: {

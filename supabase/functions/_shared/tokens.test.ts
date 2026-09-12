@@ -139,7 +139,7 @@ describe('every AI function asks for a named budget', () => {
     ]);
   });
 
-  it.each(['study', 'followup', 'devotional', 'situation'])(
+  it.each(['study', 'devotional', 'situation'])(
     '%s names a budget and hard-codes no token number',
     (name) => {
       const code = sources.find((f) => f.name === name)?.code ?? '';
@@ -148,9 +148,9 @@ describe('every AI function asks for a named budget', () => {
     },
   );
 
-  it('leaves scripture alone, because it never calls Gemini', () => {
-    const code = sources.find((f) => f.name === 'scripture')?.code ?? '';
-    expect(code).not.toMatch(/_shared\/gemini/);
+  it.each(['scripture', 'followup'])('%s imports no Gemini client at all', (name) => {
+    const code = sources.find((f) => f.name === name)?.code ?? '';
+    expect(code).not.toMatch(/from '\.\.\/_shared\/gemini/);
     expect(code).not.toMatch(/maxOutputTokens/);
   });
 

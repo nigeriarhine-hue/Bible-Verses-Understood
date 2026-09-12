@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from 'react';
 import { trackEvent } from '../lib/analytics';
-import type { ExplanationMode } from '../lib/ai/types';
 import { getAvailableTranslations, getBundledTranslations } from '../lib/bible/provider';
 import { DEFAULT_TRANSLATION } from '../lib/bible/translations';
 import type { TranslationInfo } from '../lib/bible/types';
@@ -22,12 +21,10 @@ interface PreferencesContextValue {
   translationInfo: TranslationInfo | undefined;
   translations: TranslationInfo[];
   availableTranslations: TranslationInfo[];
-  explanationMode: ExplanationMode;
   audioEnabled: boolean;
   selectedTopics: string[];
   personalizationEnabled: boolean;
   setTranslation: (abbreviation: string) => void;
-  setExplanationMode: (mode: ExplanationMode) => void;
   setAudioEnabled: (enabled: boolean) => void;
   setSelectedTopics: (topics: string[]) => void;
   setPersonalizationEnabled: (enabled: boolean) => void;
@@ -67,7 +64,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           savePreferences({
             ...current,
             translation: data.preferred_translation || current.translation,
-            explanationMode: data.preferred_explanation_mode || current.explanationMode,
+            // preferred_explanation_mode is deliberately not read. The column
+            // stays for older clients and for history, but Simple is the only
+            // explanation now, so a stored Deep or Scholar must not come back.
             audioEnabled: data.audio_enabled,
             selectedTopics: data.selected_topics ?? [],
             personalizationEnabled: data.personalization_enabled,
@@ -90,9 +89,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           {
             user_id: user.id,
             ...(patch.translation !== undefined ? { preferred_translation: patch.translation } : {}),
-            ...(patch.explanationMode !== undefined
-              ? { preferred_explanation_mode: patch.explanationMode }
-              : {}),
             ...(patch.audioEnabled !== undefined ? { audio_enabled: patch.audioEnabled } : {}),
             ...(patch.selectedTopics !== undefined ? { selected_topics: patch.selectedTopics } : {}),
             ...(patch.personalizationEnabled !== undefined
@@ -128,32 +124,21 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     [persist, translation],
   );
 
-  const setExplanationMode = useCallback(
-    (mode: ExplanationMode) => {
-      if (mode === local.explanationMode) return;
-      trackEvent('explanation_mode_change', { mode });
-      persist({ explanationMode: mode });
-    },
-    [local.explanationMode, persist],
-  );
-
   const value = useMemo<PreferencesContextValue>(
     () => ({
       translation,
       translationInfo: translations.find((t) => t.abbreviation === translation),
       translations,
       availableTranslations,
-      explanationMode: local.explanationMode,
       audioEnabled: local.audioEnabled,
       selectedTopics: local.selectedTopics,
       personalizationEnabled: local.personalizationEnabled,
       setTranslation,
-      setExplanationMode,
       setAudioEnabled: (enabled: boolean) => persist({ audioEnabled: enabled }),
       setSelectedTopics: (topics: string[]) => persist({ selectedTopics: topics }),
       setPersonalizationEnabled: (enabled: boolean) => persist({ personalizationEnabled: enabled }),
     }),
-    [translation, translations, availableTranslations, local, setTranslation, setExplanationMode, persist],
+    [translation, translations, availableTranslations, local, setTranslation, persist],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

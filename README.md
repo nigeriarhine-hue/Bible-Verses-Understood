@@ -73,7 +73,7 @@ git-ignored.
 
 | Variable | Purpose |
 | --- | --- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and follow-up.** |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and life-situation answer.** |
 | `GEMINI_MODEL` | Optional model override. Defaults to `gemini-3.6-flash`. |
 | `GEMINI_FALLBACK_MODEL` | Optional. Tried once, and only when the primary model answers HTTP 503 / `UNAVAILABLE`. Confirm the name first with `npm run gemini:models -- --check <model>`. |
 | `GEMINI_MAX_OUTPUT_TOKENS` | Optional ceiling on output tokens per request. Defaults to `65536`, what `gemini-3.6-flash` accepts. Set it only for a model that accepts less. |
@@ -87,6 +87,30 @@ git-ignored.
 > A service-role key or a Gemini key with a `VITE_` prefix would be compiled into
 > the browser bundle. Never do that.
 
+#### What calls Gemini, and how often
+
+Three endpoints generate: `study`, `devotional` and `situation`. `scripture`
+never has, and `followup` no longer does — it answers 410 and imports no
+Gemini client at all, so an old browser gets a sentence rather than a bill.
+
+`study` writes the Simple Explanation and nothing else. A request for `deep` or
+`scholar` is refused with 400 before the cache is even read, because hiding a
+control in the UI does not stop a direct POST.
+
+Both `study` and the general `devotional` read
+[`study_cache`](supabase/migrations/20260907120100_reference_content.sql) before
+they generate and write to it afterwards, keyed on reference, translation, mode,
+prompt version and a digest of the Scripture text. The same passage is written
+once and then served to everyone. A **personalised** devotional — one shaped by
+the topics a reader chose — is never read from or written to that cache, because
+it is about one person; it costs a generation every time, and that is the right
+trade.
+
+`study` and `devotional` both ask for `thinkingLevel: 'low'`: a short piece
+about a passage supplied in full does not need heavy reasoning, and reasoning is
+billed and spent from the output budget. `situation` does not — it reasons about
+what somebody wrote about their life, and that is worth paying for.
+
 #### Output token budgets
 
 Reasoning tokens are spent from the same budget as the answer, so a request
@@ -98,11 +122,11 @@ never a number:
 | Budget | Tokens | Used by |
 | --- | --- | --- |
 | `standard` | 16,384 | Simple Explanation, devotional |
-| `long` | 32,768 | Deep Explanation, follow-up questions, life-situation guidance |
-| `maximum` | ceiling (65,536) | Scholar Explanation |
+| `long` | 32,768 | Life-situation guidance |
+| `maximum` | ceiling (65,536) | Nothing at present; the ceiling everything clamps to |
 
-A budget is a ceiling, not a target — the prompts still ask for roughly 450-650
-words for Simple, 900-1300 for Deep and 1200-1800 for Scholar. If an answer is
+A budget is a ceiling, not a target — the prompts ask for 300 words or fewer for
+the Simple Explanation and 350-450 for a devotional. If an answer is
 cut off anyway, the request is retried once at the ceiling and once only; a
 request that was already at the ceiling reports the truncation rather than
 returning half an answer. And if the API rejects the limit as too high, it
@@ -274,7 +298,7 @@ and `src/components/layout/Layout.tsx` sends exactly one `page_view` per route
 change — no duplicates from a single-page navigation.
 
 Events: `verse_search`, `verse_view`, `related_scripture_click`,
-`bible_version_change`, `explanation_mode_change`, `topic_selected`,
+`bible_version_change`, `topic_selected`,
 `devotional_view`, `verse_saved`, `verse_shared`, `audio_play`,
 `account_signup`, `collection_created`.
 

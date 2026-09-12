@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TranslationSelector } from '../components/layout/TranslationSelector';
-import { ExplanationModeTabs } from '../components/study/ExplanationModeTabs';
 import { Icon } from '../components/ui/Icon';
 import { SignedOutPrompt } from '../components/ui/SignedOutPrompt';
 import { Spinner } from '../components/ui/Spinner';
@@ -15,8 +14,6 @@ export default function ProfilePage() {
   const { user, loading: authLoading, accountsAvailable, signOut } = useAuth();
   const { notify } = useToast();
   const {
-    explanationMode,
-    setExplanationMode,
     audioEnabled,
     setAudioEnabled,
     selectedTopics,
@@ -89,16 +86,6 @@ export default function ProfilePage() {
         </p>
         <div className="mt-4 max-w-xs">
           <TranslationSelector variant="block" />
-        </div>
-      </section>
-
-      <section className="glass p-5 sm:p-6">
-        <h2 className="display text-[1.25rem]">Default explanation depth</h2>
-        <p className="mt-1.5 text-ui-sm muted">
-          Where each study starts. You can switch on any page.
-        </p>
-        <div className="mt-4">
-          <ExplanationModeTabs mode={explanationMode} onChange={setExplanationMode} />
         </div>
       </section>
 

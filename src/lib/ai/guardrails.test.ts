@@ -15,6 +15,7 @@ const flatten = (text: string) => text.replace(/\s+/g, ' ');
 
 const prompts = read('supabase/functions/_shared/prompts.ts');
 const situation = read('supabase/functions/situation/index.ts');
+const devotional = read('supabase/functions/devotional/index.ts');
 const flatPrompts = flatten(prompts);
 const flatSituation = flatten(situation);
 
@@ -61,29 +62,65 @@ describe('spiritual guidance boundaries', () => {
   });
 });
 
-describe('explanation modes', () => {
-  it('uses the product’s exact section headings for the simple explanation', () => {
-    for (const heading of ['Meaning', 'Why It Matters', 'For Your Life Today', 'Moving Forward']) {
+describe('the simple explanation, the only one that generates', () => {
+  it('uses the product’s exact section headings', () => {
+    for (const heading of ['Meaning', 'For Your Life Today']) {
       expect(flatPrompts).toContain(`"${heading}"`);
     }
   });
 
-  it('offers the deep explanation’s sections', () => {
-    for (const heading of [
-      'The Verse in Context',
-      'Historical and Cultural Context',
-      'Key Words and Phrases',
-      'Original Hebrew or Greek',
-      'Practical Application',
+  it('caps the whole explanation at 300 words, not 300 per section', () => {
+    expect(flatPrompts).toMatch(
+      /summary and both section bodies together must come to 300 words or fewer/i,
+    );
+    expect(flatPrompts).toMatch(/hard limit/i);
+    expect(flatPrompts).toMatch(/Do not pad to reach 300/i);
+  });
+
+  it('budgets the parts so they add up to the whole', () => {
+    expect(flatPrompts).toMatch(/40-60 words/);
+    expect(flatPrompts).toMatch(/100-140 words/);
+    expect(flatPrompts).toMatch(/70-100 words/);
+  });
+
+  it('asks for the qualities that keep a short answer worth reading', () => {
+    for (const instruction of [
+      /Be concise/i,
+      /No repetition/i,
+      /No long introduction/i,
+      /No closing summary/i,
+      /Plain language/i,
+      /Biblically grounded/i,
+      /Practical/i,
+      /Keep commentary and Scripture separate/i,
+      /Never claim direct revelation/i,
+      /Never predict this reader's future/i,
     ]) {
-      expect(flatPrompts).toContain(`"${heading}"`);
+      expect(flatPrompts).toMatch(instruction);
     }
   });
 
-  it('asks the scholar explanation to cover disagreement honestly', () => {
-    expect(flatPrompts).toMatch(/History of Interpretation/);
-    expect(flatPrompts).toMatch(/Common Misunderstandings/);
-    expect(flatPrompts).toMatch(/without\s+caricature/i);
+  it('keeps related Scripture, which is not counted against the limit', () => {
+    expect(flatPrompts).toMatch(/Related Scripture explanations are not counted/i);
+    expect(flatPrompts).toMatch(/For relatedScripture/);
+  });
+
+  it('carries no deep or scholar instructions any more', () => {
+    expect(flatPrompts).not.toMatch(/DEEP EXPLANATION/);
+    expect(flatPrompts).not.toMatch(/SCHOLAR EXPLANATION/);
+    expect(flatPrompts).not.toMatch(/History of Interpretation/);
+    expect(flatPrompts).not.toMatch(/FOLLOWUP_SCHEMA/);
+  });
+
+  it('keeps the devotional short without stripping it', () => {
+    const flatDevotional = flatten(devotional);
+    expect(flatDevotional).toMatch(/350-450 words/);
+    expect(flatDevotional).toMatch(/Be concise and do not/i);
+    expect(flatDevotional).toMatch(/repeat between sections/i);
+    // Source strings escape the apostrophe, so match what is written.
+    for (const heading of ["Today\\'s Thought", 'Deeper Reflection', 'One Small Action']) {
+      expect(flatDevotional).toContain(heading);
+    }
   });
 
   it('uses the life-situation sections the product specifies', () => {

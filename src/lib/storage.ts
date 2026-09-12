@@ -7,7 +7,7 @@
  * nothing of that kind is kept here.
  */
 
-import type { ExplanationMode } from './ai/types';
+import { normalizeExplanationMode, type ExplanationMode } from './ai/types';
 import type { StudySource } from '../types/database';
 
 const PREFIX = 'bvu:';
@@ -50,7 +50,14 @@ const DEFAULT_PREFERENCES: LocalPreferences = {
 };
 
 export function loadPreferences(): LocalPreferences {
-  return { ...DEFAULT_PREFERENCES, ...read<Partial<LocalPreferences>>('preferences', {}) };
+  const stored = read<Partial<LocalPreferences>>('preferences', {});
+  return {
+    ...DEFAULT_PREFERENCES,
+    ...stored,
+    // A browser that stored 'deep' or 'scholar' before those were retired reads
+    // back as simple. Normalised here so nothing downstream has to remember.
+    explanationMode: normalizeExplanationMode(stored.explanationMode),
+  };
 }
 
 export function savePreferences(preferences: Partial<LocalPreferences>): LocalPreferences {

@@ -4,7 +4,7 @@
  * Bump PROMPT_VERSION whenever the wording below changes — it is part of the
  * study cache key, so a change invalidates old cached commentary.
  */
-export const PROMPT_VERSION = 'v1';
+export const PROMPT_VERSION = 'v2';
 
 /** Language the product never puts in a reader's mouth or God's. */
 export const GUARDRAILS = `
@@ -169,77 +169,53 @@ export const DEVOTIONAL_SCHEMA = {
   required: ['title', 'sections', 'reflectionQuestion'],
 };
 
-export const FOLLOWUP_SCHEMA = {
-  type: 'object',
-  properties: {
-    answer: { type: 'string' },
-    relatedScripture: relatedScriptureSchema,
-    suggestedQuestions: { type: 'array', items: { type: 'string' }, nullable: true },
-  },
-  required: ['answer'],
-};
-
 /* -------------------------------------------------------------------------- */
 /* Mode-specific instructions                                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Kept as a union because saved studies, history rows and preferences recorded
+ * before this change still carry 'deep' and 'scholar'. Nothing generates them:
+ * the study function refuses anything but 'simple' before it reaches Gemini.
+ */
 export type ExplanationMode = 'simple' | 'deep' | 'scholar';
 
-const SIMPLE = `
-Produce a SIMPLE EXPLANATION with exactly these sections, in this order, using
-these headings verbatim:
-1. "Meaning" — what the passage is actually saying, in plain words. 2-4 short
-   paragraphs.
-2. "Why It Matters" — why this mattered then and still matters.
-3. "For Your Life Today" — how it may touch ordinary life now. Concrete.
-4. "Moving Forward" — one or two ways a biblical principle here might inform
-   future decisions, framed as possibilities, never predictions.
-Aim for roughly 450-650 words in total. No key terms, no interpretations
-section, no prayer.
+/** The only explanation the product generates. */
+export const SIMPLE_EXPLANATION = `
+Produce a SIMPLE EXPLANATION with exactly these two sections, in this order,
+using these headings verbatim:
+1. "Meaning" - what the passage is actually saying, and just enough of its
+   setting to make sense of it. 100-140 words.
+2. "For Your Life Today" - how it may touch ordinary life now, concretely.
+   70-100 words.
+Write the summary field first, as 40-60 words that give the heart of the
+passage on their own.
+
+LENGTH - this is a hard limit: summary and both section bodies together must
+come to 300 words or fewer. Related Scripture explanations are not counted.
+Do not pad to reach 300; a passage that is said well in 200 words is finished
+at 200.
+
+HOW TO WRITE IT:
+- Be concise. Every sentence earns its place.
+- No repetition. Never restate in the second section what the first already
+  said, and never restate the summary.
+- No long introduction. Start with the meaning itself, not with what you are
+  about to do.
+- No closing summary or sign-off. Stop when the point is made.
+- Plain language a reader with no theological training follows first time.
+- Biblically grounded: stay with what this passage says, in its own context.
+- Practical: the second section gives something a reader can actually do or
+  think differently about this week.
+- Keep commentary and Scripture separate. This is explanation about the text,
+  never a substitute wording of it, and never presented as the text.
+- Never claim direct revelation - no "God is telling you", no message from God
+  to this reader.
+- Never predict this reader's future or promise them an outcome.
+No key terms, no interpretations section, no reflection questions, no prayer.
 `.trim();
 
-const DEEP = `
-Produce a DEEP EXPLANATION. Use these headings, in this order, including only
-those the passage genuinely warrants (skip any that would be padding):
-"Overview", "The Verse in Context", "Deeper Meaning",
-"Historical and Cultural Context", "Key Words and Phrases",
-"Original Hebrew or Greek", "Literary Context", "Spiritual Principles",
-"What This Can Mean for Your Life Today", "Looking Forward",
-"Practical Application".
-Also fill keyTerms (3-6 entries, with the original-language word,
-transliteration and language where you are confident) and reflectionQuestions
-(3-5 open questions). Include a short prayer only if it fits the passage.
-Aim for roughly 900-1300 words across the sections.
-`.trim();
-
-const SCHOLAR = `
-Produce a SCHOLAR EXPLANATION for a reader who wants the academic picture,
-while staying readable. Cover, as the passage warrants, with these headings:
-"Authorship and Setting", "Audience", "Literary Genre and Structure",
-"Textual and Immediate Context", "Canonical Context", "Linguistic Observations",
-"Original Hebrew or Greek", "Theological Themes", "History of Interpretation",
-"Common Misunderstandings", "Application Considerations".
-Fill keyTerms (4-8 entries with original language, transliteration, and a
-careful gloss — note where lexicons differ). Where sincere interpreters
-disagree, fill interpretations with the major recognised positions, naming the
-traditions or schools that hold them and stating each fairly and without
-caricature; the reader should not be able to tell which you prefer. Note where
-manuscript evidence or translation choices are genuinely contested, and say
-plainly when a question is unsettled. Aim for roughly 1200-1800 words.
-`.trim();
-
-export function modeInstruction(mode: ExplanationMode): string {
-  switch (mode) {
-    case 'deep':
-      return DEEP;
-    case 'scholar':
-      return SCHOLAR;
-    default:
-      return SIMPLE;
-  }
-}
-
-export function studySystemPrompt(mode: ExplanationMode): string {
+export function studySystemPrompt(): string {
   return [
     'You are the study writer for Bible Verses Understood, a Scripture-study',
     'application. You write careful, honest commentary on a passage that has',
@@ -250,9 +226,10 @@ export function studySystemPrompt(mode: ExplanationMode): string {
     '',
     GUARDRAILS,
     '',
-    modeInstruction(mode),
+    SIMPLE_EXPLANATION,
     '',
     RELATED_SCRIPTURE_INSTRUCTION,
+    'Return 3 related passages.',
     '',
     'Return JSON matching the provided schema. Section bodies are plain prose:',
     'use blank lines between paragraphs, and no Markdown headings, bullets,',
