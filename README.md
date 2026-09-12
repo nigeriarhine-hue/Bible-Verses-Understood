@@ -93,23 +93,48 @@ Three endpoints generate: `study`, `devotional` and `situation`. `scripture`
 never has, and `followup` no longer does — it answers 410 and imports no
 Gemini client at all, so an old browser gets a sentence rather than a bill.
 
+| Endpoint | Guest / day | Reader / day | Thinking | Tier | Length | Cached |
+| --- | --- | --- | --- | --- | --- | --- |
+| `study` (Simple) | 20 | 50 | low | standard | ≤ 300 words | shared |
+| `devotional` (general) | 5 | 15 | low | standard | 350-450 words | shared |
+| `devotional` (personalised) | — | 15 | low | standard | 350-450 words | private |
+| `situation` | 2 | 5 | low | standard | ≤ 500 words | never |
+
 `study` writes the Simple Explanation and nothing else. A request for `deep` or
 `scholar` is refused with 400 before the cache is even read, because hiding a
 control in the UI does not stop a direct POST.
 
-Both `study` and the general `devotional` read
+**Caching.** `study` and the general `devotional` read
 [`study_cache`](supabase/migrations/20260907120100_reference_content.sql) before
 they generate and write to it afterwards, keyed on reference, translation, mode,
 prompt version and a digest of the Scripture text. The same passage is written
-once and then served to everyone. A **personalised** devotional — one shaped by
-the topics a reader chose — is never read from or written to that cache, because
-it is about one person; it costs a generation every time, and that is the right
-trade.
+once and served to everyone. A **personalised** devotional goes to
+`user_devotional_cache` instead, read and written through the reader's own
+token so row-level security is what keeps it private — not the correctness of
+the key. Its identity includes the reader's id and the set of interests they
+chose, so changing those interests produces a different devotional rather than
+an old one. A guest asking for a personalised devotional gets the general one:
+there is nowhere private to keep theirs. Life-situation guidance is never
+cached anywhere, which is why it has the tightest allowance.
 
-`study` and `devotional` both ask for `thinkingLevel: 'low'`: a short piece
-about a passage supplied in full does not need heavy reasoning, and reasoning is
-billed and spent from the output budget. `situation` does not — it reasons about
-what somebody wrote about their life, and that is worth paying for.
+**Allowances.** Every generation is counted in Postgres by
+`consume_ai_quota`, which decides who the caller is from the verified JWT
+rather than from anything the request claims. The counting is a single
+`insert .. on conflict .. where`, so two requests arriving together cannot both
+take the last one, and the count is the same on every instance and across cold
+starts. The in-memory limiter that remains is burst protection only. A cache
+hit is never charged — the allowance is on new AI content, not on reading.
+
+When an allowance runs out the endpoint answers 429 with
+`code: daily_limit_reached`, and the reader is told that Bible reading and
+previously prepared explanations remain available — which is true: Scripture
+never touches Gemini, and both caches are read before the allowance is.
+
+Every limit can be moved with a secret, e.g. `AI_DAILY_LIMIT_SITUATION_USER=10`.
+
+`thinkingLevel: 'low'` is asked for per request on all three: these are short
+pieces about text supplied in full, and reasoning is billed and spent from the
+same output budget as the answer.
 
 #### Output token budgets
 

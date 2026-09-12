@@ -300,20 +300,28 @@ function CommentaryUnavailable({
   onRetry: () => void;
 }) {
   const notConfigured = code === 'not_configured';
+  const dailyLimit = code === 'daily_limit';
+  // Neither of these is fixed by trying again: one is a deployment that has no
+  // commentary service, the other is today's allowance already spent.
+  const retryable = !notConfigured && !dailyLimit;
   return (
     <div className="glass p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <Icon name="info" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--gold))]" />
         <div>
           <h2 className="display text-[1.25rem] leading-tight">
-            {notConfigured ? 'Explanations are not switched on yet' : 'The explanation did not load'}
+            {notConfigured
+              ? 'Explanations are not switched on yet'
+              : dailyLimit
+                ? "Today's explanation limit has been reached"
+                : 'The explanation did not load'}
           </h2>
           <p className="mt-2 text-prose-base">{message}</p>
           <p className="mt-2 text-ui-sm muted">
             The Scripture above is unaffected — it comes from the Bible text itself, not from the
             commentary service.
           </p>
-          {!notConfigured ? (
+          {retryable ? (
             <button type="button" onClick={onRetry} className="btn btn-primary mt-4">
               Try again
             </button>

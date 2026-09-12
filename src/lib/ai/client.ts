@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import {
   CommentaryError,
   EXPLANATION_MODE,
+  type CommentaryErrorCode,
   type Devotional,
   type SituationGuidance,
   type Study,
@@ -54,15 +55,18 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
 
   if (!res.ok) {
     let message = `The commentary service returned ${res.status}.`;
-    let code: 'not_configured' | 'rate_limited' | 'failed' = 'failed';
+    let code: CommentaryErrorCode = 'failed';
     try {
       const payload = (await res.json()) as { error?: string; code?: string };
       if (payload.error) message = payload.error;
       if (payload.code === 'commentary_not_configured') code = 'not_configured';
+      // The day's allowance, not a burst: the function says which it is, and
+      // only one of the two is worth offering a retry for.
+      if (payload.code === 'daily_limit_reached') code = 'daily_limit';
     } catch {
       /* keep the default message */
     }
-    if (res.status === 429) code = 'rate_limited';
+    if (res.status === 429 && code !== 'daily_limit') code = 'rate_limited';
     // 503 is not on its own a sign of a missing key: an overloaded model
     // answers with one too, and that is worth a retry. Every function that
     // really is unconfigured says so with the code above, so trust that alone —

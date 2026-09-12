@@ -7,6 +7,7 @@
  * service role.
  */
 import { PROMPT_VERSION } from './prompts.ts';
+import { dailyQuota, type QuotaEndpoint } from './quotas.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -88,7 +89,215 @@ export async function writeStudyCache(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Very small in-memory rate limiter                                          */
+/* Who the caller is, and what they have left for today                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The caller's own credentials, forwarded to PostgREST unchanged.
+ *
+ * The point is that this function never decides who anybody is. It hands the
+ * token to the database, which verifies it against the project secret. A
+ * request carrying a made-up user id gets nothing.
+ */
+function callerHeaders(req: Request): Record<string, string> | null {
+  const authorization = req.headers.get('authorization');
+  if (!SUPABASE_URL || !ANON_KEY || !authorization) return null;
+  return {
+    apikey: ANON_KEY,
+    Authorization: authorization,
+    'Content-Type': 'application/json',
+  };
+}
+
+/**
+ * The signed-in reader behind this request, or null for a guest.
+ *
+ * Asked of the database rather than read out of the token here, so a forged
+ * `sub` cannot get a private devotional or somebody else's allowance.
+ */
+export async function callerUserId(req: Request): Promise<string | null> {
+  const headers = callerHeaders(req);
+  if (!headers) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ai_identity`, {
+      method: 'POST',
+      headers,
+      body: '{}',
+    });
+    if (!res.ok) return null;
+    const id = (await res.json()) as string | null;
+    return typeof id === 'string' && id ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface QuotaVerdict {
+  allowed: boolean;
+  used: number;
+  quota: number;
+  signedIn: boolean;
+  /** True when there is no database to count against, so nothing was charged. */
+  unenforced: boolean;
+}
+
+/**
+ * Takes one generation from today's allowance, before Gemini is called.
+ *
+ * Counting happens in a single statement inside the database, so two requests
+ * arriving together cannot both take the last one — and it is the same count
+ * whichever instance serves them, which the previous in-memory limiter could
+ * not manage across a cold start, let alone across instances.
+ *
+ * If the project is configured and the call fails, this refuses. That is the
+ * cautious way round: a database that cannot answer is also a database that
+ * cannot serve the cache, so every request behind it would be a fresh
+ * generation — exactly when an uncounted endpoint costs the most.
+ */
+export async function consumeDailyQuota(
+  req: Request,
+  endpoint: QuotaEndpoint,
+): Promise<QuotaVerdict> {
+  const limits = dailyQuota(endpoint);
+  const headers = callerHeaders(req);
+  if (!headers) {
+    // Nothing to count against — a local run without Supabase settings.
+    return { allowed: true, used: 0, quota: limits.guest, signedIn: false, unenforced: true };
+  }
+
+  // The address never leaves this function in the clear.
+  const guestKey = await sha256(callerKey(req));
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_ai_quota`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        p_endpoint: endpoint,
+        p_guest_key: guestKey,
+        p_guest_limit: limits.guest,
+        p_user_limit: limits.user,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`The daily quota check for ${endpoint} returned ${res.status}; refusing.`);
+      return { allowed: false, used: 0, quota: limits.guest, signedIn: false, unenforced: false };
+    }
+    const rows = (await res.json()) as Array<{
+      allowed: boolean;
+      used: number;
+      quota: number;
+      signed_in: boolean;
+    }>;
+    const row = rows[0];
+    if (!row) {
+      console.error(`The daily quota check for ${endpoint} returned no verdict; refusing.`);
+      return { allowed: false, used: 0, quota: limits.guest, signedIn: false, unenforced: false };
+    }
+    return {
+      allowed: row.allowed === true,
+      used: row.used ?? 0,
+      quota: row.quota ?? 0,
+      signedIn: row.signed_in === true,
+      unenforced: false,
+    };
+  } catch (error) {
+    console.error(
+      `The daily quota check for ${endpoint} could not be made; refusing.`,
+      error instanceof Error ? error.name : 'unknown error',
+    );
+    return { allowed: false, used: 0, quota: limits.guest, signedIn: false, unenforced: false };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Private per-reader devotional cache                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The identity of one reader's personalised devotional.
+ *
+ * The reader's id is inside the digest as well as in its own column, so two
+ * readers who chose the same interests for the same passage still get separate
+ * rows — and the policies on the table mean neither could read the other's
+ * even if that were not true.
+ */
+export async function userDevotionalCacheKey(
+  userId: string,
+  reference: string,
+  translation: string,
+  scriptureText: string,
+  interests: string[],
+): Promise<string> {
+  const textDigest = await sha256(scriptureText);
+  // Order and case must not change the identity; the set of interests is what
+  // matters, and changing that set has to produce a different devotional.
+  const shape = [...new Set(interests.map((i) => i.trim().toLowerCase()).filter(Boolean))]
+    .sort()
+    .join(',');
+  return sha256([userId, reference, translation, PROMPT_VERSION, textDigest, shape].join('|'));
+}
+
+/**
+ * Reads and writes go through the reader's own token, never the service role.
+ *
+ * That is deliberate: it means row-level security is what enforces privacy,
+ * not the correctness of the key above. A mistake in the key cannot leak a
+ * devotional, because the database will not return another reader's row to
+ * this token at all.
+ */
+export async function readUserDevotional<T>(req: Request, cacheKey: string): Promise<T | null> {
+  const headers = callerHeaders(req);
+  if (!headers) return null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_devotional_cache?cache_key=eq.${encodeURIComponent(cacheKey)}` +
+        '&select=devotional_data&limit=1',
+      { headers },
+    );
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ devotional_data: T }>;
+    return rows[0]?.devotional_data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeUserDevotional(
+  req: Request,
+  userId: string,
+  cacheKey: string,
+  reference: string,
+  translation: string,
+  devotionalData: unknown,
+): Promise<void> {
+  const headers = callerHeaders(req);
+  if (!headers) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/user_devotional_cache?on_conflict=user_id,cache_key`, {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        user_id: userId,
+        cache_key: cacheKey,
+        reference,
+        translation,
+        prompt_version: PROMPT_VERSION,
+        devotional_data: devotionalData,
+      }),
+    });
+  } catch {
+    // Caching is an optimisation; never fail a devotional because of it.
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Very small in-memory burst limiter                                         */
+/*                                                                            */
+/* Not the cost control — that is consumeDailyQuota above, which counts in the */
+/* database. This only absorbs an obvious flood before it reaches Postgres,    */
+/* and forgets everything on a cold start, which is exactly why it cannot be   */
+/* trusted with anything that costs money.                                    */
 /* -------------------------------------------------------------------------- */
 
 const hits = new Map<string, number[]>();

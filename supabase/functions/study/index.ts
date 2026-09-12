@@ -20,8 +20,10 @@ import {
   studySystemPrompt,
   type ExplanationMode,
 } from '../_shared/prompts.ts';
+import { DAILY_LIMIT_CODE, DAILY_LIMIT_MESSAGE } from '../_shared/quotas.ts';
 import {
   callerKey,
+  consumeDailyQuota,
   isRateLimited,
   readStudyCache,
   studyCacheKey,
@@ -104,9 +106,17 @@ Deno.serve(async (req) => {
     );
   }
 
+  // The cache is read first and costs nothing, so an explanation that already
+  // exists is served whatever the allowance says — that is the point of the
+  // allowance being on generation rather than on reading.
   const cacheKey = await studyCacheKey(reference, translation, mode, scriptureText);
   const cached = await readStudyCache<StudyResponse>(cacheKey);
   if (cached) return json(req, { ...cached, cached: true });
+
+  const quota = await consumeDailyQuota(req, 'study');
+  if (!quota.allowed) {
+    return failure(req, DAILY_LIMIT_MESSAGE, 429, { code: DAILY_LIMIT_CODE });
+  }
 
   const prompt = [
     scriptureBlock(reference, translation, scriptureText),

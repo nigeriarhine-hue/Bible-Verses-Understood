@@ -6,7 +6,9 @@
  * explains how it may apply — without predicting their future.
  *
  * The reader's words are used for this request only. They are never sent to
- * analytics and are not written to the shared cache.
+ * analytics and are never written to any cache, shared or private — which is
+ * why this is the one endpoint that pays for every request, and the one with
+ * the tightest daily allowance.
  *
  * Body: { situation, translation }
  */
@@ -19,7 +21,8 @@ import {
   SITUATION_SCHEMA,
   VOICE,
 } from '../_shared/prompts.ts';
-import { callerKey, isRateLimited } from '../_shared/store.ts';
+import { DAILY_LIMIT_CODE, DAILY_LIMIT_MESSAGE } from '../_shared/quotas.ts';
+import { callerKey, consumeDailyQuota, isRateLimited } from '../_shared/store.ts';
 
 const MAX_SITUATION_CHARS = 1200;
 
@@ -52,6 +55,13 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Nothing here is cached, so the allowance is checked before anything else
+  // is prepared — and before Gemini is reachable at all.
+  const quota = await consumeDailyQuota(req, 'situation');
+  if (!quota.allowed) {
+    return failure(req, DAILY_LIMIT_MESSAGE, 429, { code: DAILY_LIMIT_CODE });
+  }
+
   const system = [
     'A reader has described something they are facing, or asked what the Bible',
     'says about a subject. Choose one passage that genuinely speaks to it and',
@@ -74,7 +84,16 @@ Deno.serve(async (req) => {
     'Use these headings, in this order, skipping none:',
     '"What You\'re Facing", "What the Passage Means", "How It May Apply",',
     '"Something to Consider", "A Practical Next Step".',
-    'Then a short optional prayer. Around 500-700 words in total.',
+    'Then a short optional prayer.',
+    '',
+    'LENGTH - this is a hard limit: the section bodies and the summary together',
+    'must come to 500 words or fewer. Aim for 300-450 when that answers them',
+    'fully; a shorter answer that meets them where they are beats a longer one',
+    'that circles. Related Scripture explanations are not counted.',
+    'Do not pad, do not repeat a point between sections, do not open by saying',
+    'what you are about to do, and do not close by summarising what you said.',
+    'Say less about the passage before applying it, never less about their',
+    'safety: the care above is not something to trim for length.',
     '',
     'For primaryReference, give the passage the sections are about — book name',
     'as it appears in a standard Protestant Bible, chapter, starting verse, and',
@@ -82,7 +101,7 @@ Deno.serve(async (req) => {
     'you can.',
     '',
     RELATED_SCRIPTURE_INSTRUCTION,
-    'Return 3-5 related passages.',
+    'Return 2-3 related passages.',
     '',
     'Return JSON matching the schema. Section bodies are plain prose with no',
     'Markdown formatting.',
@@ -94,8 +113,11 @@ Deno.serve(async (req) => {
       prompt: `The reader wrote: """${situation}"""\n\nThey are reading in the ${translation} translation.`,
       schema: SITUATION_SCHEMA,
       temperature: 0.6,
-      // Several sections plus the passage that fits the reader's situation.
-      budget: 'long',
+      // The answer is now capped at 500 words and its shape is spelled out, so
+      // the standard tier is ample. It stays a ceiling, not a target: reasoning
+      // is spent from the same budget and must not truncate the reply.
+      thinkingLevel: 'low',
+      budget: 'standard',
     });
 
     const primary = validateRelated((raw.primaryReference ?? {}) as Record<string, unknown>);

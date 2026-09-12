@@ -158,3 +158,80 @@ describe('the shared server-side cache', () => {
     expect(PROMPT_VERSION).toBe('v2');
   });
 });
+
+describe('the daily allowance', () => {
+  it('is never spent on a cache hit, so reading is free', async () => {
+    const h = await load({ cached: { ...STUDY, reference: 'John 3:16', mode: 'simple' } });
+    const res = await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    expect(res.status).toBe(200);
+    expect(h.of('quota')).toHaveLength(0);
+  });
+
+  it('is taken after the cache is checked and before Gemini is called', async () => {
+    const h = await load();
+    await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    const order = h.calls.map((c) => c.kind);
+    expect(order).toEqual(['cache-read', 'quota', 'gemini', 'cache-write']);
+  });
+
+  it('offers a guest 20 generations and a signed-in reader 50', async () => {
+    const h = await load();
+    await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    expect(h.of('quota')[0]?.body).toMatchObject({
+      p_endpoint: 'study',
+      p_guest_limit: 20,
+      p_user_limit: 50,
+    });
+  });
+
+  it('is never spent by a refused mode', async () => {
+    const h = await load();
+    await h.handler(post('study', { ...ASK, mode: 'deep' }));
+    expect(h.of('quota')).toHaveLength(0);
+  });
+
+  it('stops the generation once it is spent, without calling Gemini', async () => {
+    const h = await load({ quota: { allowed: false, used: 20, quota: 20 } });
+    const res = await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    const payload = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(payload.code).toBe('daily_limit_reached');
+    expect(payload.error).toContain('Bible reading and previously prepared explanations remain available');
+    expect(h.gemini()).toHaveLength(0);
+    expect(h.cacheWrites()).toHaveLength(0);
+  });
+
+  it('still serves a cached explanation after the limit is reached', async () => {
+    // This is the point of checking the cache first: the limit stops new AI
+    // content, not the site.
+    const h = await load({
+      cached: { ...STUDY, reference: 'John 3:16', mode: 'simple' },
+      quota: { allowed: false, used: 20, quota: 20 },
+    });
+    const res = await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    const payload = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(payload.cached).toBe(true);
+    expect(payload.summary).toBe(STUDY.summary);
+    expect(h.gemini()).toHaveLength(0);
+  });
+
+  it('is counted by the database, not by this process', async () => {
+    const h = await load();
+    await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    const call = h.of('quota')[0];
+    expect(call?.url).toContain('/rest/v1/rpc/consume_ai_quota');
+    // Identity is the database's to decide; nothing here claims a user id.
+    expect(call?.body).not.toHaveProperty('p_user_id');
+    expect(call?.authorization).toBe('Bearer anon-jwt');
+  });
+
+  it('refuses rather than generating when the database cannot answer', async () => {
+    const h = await load({ quotaFails: true });
+    const res = await h.handler(post('study', { ...ASK, mode: 'simple' }));
+    expect(res.status).toBe(429);
+    expect(h.gemini()).toHaveLength(0);
+  });
+});

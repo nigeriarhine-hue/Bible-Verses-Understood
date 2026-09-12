@@ -84,10 +84,18 @@ export interface SituationGuidance {
   relatedScripture: RelatedScripture[];
 }
 
+/**
+ * `daily_limit` is the day's AI allowance being spent, which is not a failure
+ * and not something retrying fixes — Scripture and everything already written
+ * keep working, so the UI says so instead of offering a button that cannot
+ * help. `rate_limited` is the short burst limit, where waiting does help.
+ */
+export type CommentaryErrorCode = 'not_configured' | 'daily_limit' | 'rate_limited' | 'failed';
+
 export class CommentaryError extends Error {
   constructor(
     message: string,
-    readonly code: 'not_configured' | 'rate_limited' | 'failed',
+    readonly code: CommentaryErrorCode,
   ) {
     super(message);
     this.name = 'CommentaryError';

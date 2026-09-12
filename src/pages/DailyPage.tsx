@@ -180,7 +180,9 @@ export default function DailyPage() {
                     <h3 className="display text-[1.125rem]">
                       {devotionalError.code === 'not_configured'
                         ? 'Devotionals are not switched on yet'
-                        : 'The devotional did not load'}
+                        : devotionalError.code === 'daily_limit'
+                          ? "Today's devotional limit has been reached"
+                          : 'The devotional did not load'}
                     </h3>
                     <p className="mt-2 text-prose-base">{devotionalError.message}</p>
                     <p className="mt-2 text-ui-sm muted">

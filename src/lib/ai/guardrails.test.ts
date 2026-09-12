@@ -112,6 +112,18 @@ describe('the simple explanation, the only one that generates', () => {
     expect(flatPrompts).not.toMatch(/FOLLOWUP_SCHEMA/);
   });
 
+  it('caps life-situation guidance at 500 words without trimming its care', () => {
+    expect(flatSituation).toMatch(/hard limit/i);
+    expect(flatSituation).toMatch(/must come to 500 words or fewer/i);
+    expect(flatSituation).toMatch(/Aim for 300-450/);
+    // Length is taken out of the explanation, never out of the safety guidance.
+    // The instruction wraps across two source strings, so match both halves.
+    expect(flatSituation).toMatch(/never less about their/i);
+    expect(flatSituation).toMatch(/safety: the care above is not something to trim/i);
+    expect(flatSituation).toMatch(/local crisis line/);
+    expect(flatSituation).toMatch(/qualified professional/);
+  });
+
   it('keeps the devotional short without stripping it', () => {
     const flatDevotional = flatten(devotional);
     expect(flatDevotional).toMatch(/350-450 words/);

@@ -183,7 +183,9 @@ export default function GuidancePage() {
                 <h2 className="display text-[1.25rem] leading-tight">
                   {error.code === 'not_configured'
                     ? 'This search is not switched on yet'
-                    : 'That did not go through'}
+                    : error.code === 'daily_limit'
+                      ? "Today's guidance limit has been reached"
+                      : 'That did not go through'}
                 </h2>
                 <p className="mt-2 text-prose-base">{error.message}</p>
                 <p className="mt-3 text-ui-sm muted">
