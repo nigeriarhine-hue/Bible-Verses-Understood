@@ -3,6 +3,12 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      screens: {
+        // Below this a phone is narrow enough that the search field needs the
+        // whole row: the decorative magnifier and the wider padding cost more
+        // than they give. Added to the default scale, not replacing it.
+        xs: '380px',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
         serif: ['Lora', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],

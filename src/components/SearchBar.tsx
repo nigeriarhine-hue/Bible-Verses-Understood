@@ -16,14 +16,17 @@ interface SearchBarProps {
 }
 
 /**
- * One field for everything: a verse, a passage, a chapter, a topic, a question,
- * or a sentence about what someone is facing.
+ * One field for everything: a verse, a passage, a chapter, or a topic.
+ *
+ * The wording says "Search a Bible verse" because that is what most people
+ * arrive wanting. Topic matching still works — typing "grief" or "verses about
+ * forgiveness" reaches the topic — it is simply not what the field advertises.
  */
 export function SearchBar({
   autoFocus = false,
   initialValue = '',
   size = 'large',
-  placeholder = "Search a Bible verse, topic, or something you're facing...",
+  placeholder = 'Search a Bible verse',
   value,
   onValueChange,
 }: SearchBarProps) {
@@ -63,13 +66,13 @@ export function SearchBar({
   return (
     <form onSubmit={onSubmit} role="search" className="w-full">
       <label htmlFor="site-search" className="sr-only">
-        Search a Bible verse, topic, or something you are facing
+        Search a Bible verse
       </label>
       <div className="relative">
         <Icon
           name="search"
-          className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[rgb(var(--ink-on-dark-muted))] ${
-            large ? 'h-5 w-5 sm:left-5' : 'h-5 w-5'
+          className={`pointer-events-none absolute left-4 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-[rgb(var(--ink-on-dark-muted))] xs:block ${
+            large ? 'sm:left-5' : ''
           }`}
         />
         <input
@@ -81,13 +84,17 @@ export function SearchBar({
           autoComplete="off"
           enterKeyHint="search"
           placeholder={placeholder}
-          className={`field pr-[6.5rem] ${
-            large ? 'py-4 pl-12 text-ui-lg sm:pl-14 sm:text-[1.125rem]' : 'py-3 pl-11'
+          // The right padding clears the submit button, which is a bare arrow on
+          // a phone and a labelled button from sm up. It used to be sized for
+          // the labelled one everywhere, which left the short placeholder cut
+          // off mid-word on a phone.
+          className={`field pr-[3.75rem] xs:pr-[4.5rem] sm:pr-[6.5rem] ${
+            large ? 'py-4 pl-4 text-ui-sm xs:pl-12 xs:text-ui-lg sm:pl-14 sm:text-[1.125rem]' : 'py-3 pl-4 xs:pl-11'
           }`}
         />
         <button
           type="submit"
-          className="btn btn-primary absolute right-1.5 top-1/2 h-[calc(100%-0.75rem)] -translate-y-1/2 px-4 sm:px-5"
+          className="btn btn-primary absolute right-1.5 top-1/2 h-[calc(100%-0.75rem)] -translate-y-1/2 px-3 xs:px-4 sm:px-5"
           disabled={query.trim().length === 0}
         >
           <span className="hidden sm:inline">Search</span>

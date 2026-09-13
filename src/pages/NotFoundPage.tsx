@@ -7,8 +7,8 @@ export default function NotFoundPage() {
       <div className="glass mx-auto max-w-xl p-6 sm:p-8">
         <h1 className="display text-[1.75rem] leading-tight">That page does not exist</h1>
         <p className="mt-3 text-prose-base">
-          The link may be old, or the address slightly off. Search for a verse, a topic, or
-          something you are facing and we will take it from there.
+          The link may be old, or the address slightly off. Search for a verse and we will take it
+          from there.
         </p>
         <div className="mt-5">
           <SearchBar size="compact" />
