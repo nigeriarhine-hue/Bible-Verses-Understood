@@ -131,28 +131,57 @@ describe('every AI function asks for a named budget', () => {
 
   it('finds the functions to check', () => {
     expect(sources.map((f) => f.name).sort()).toEqual([
+      'daily-email',
       'devotional',
+      'email-subscription',
       'followup',
+      'prewarm',
       'scripture',
       'situation',
       'study',
     ]);
   });
 
-  it.each(['study', 'devotional', 'situation'])(
-    '%s names a budget and hard-codes no token number',
+  it('situation names a budget where it asks for one', () => {
+    const code = sources.find((f) => f.name === 'situation')?.code ?? '';
+    expect(code).toMatch(/budget: /);
+    expect(code).not.toMatch(/maxOutputTokens/);
+  });
+
+  it.each(['prewarm', 'daily-email'])(
+    '%s generates through the shared generator, so it names no limit of its own',
     (name) => {
       const code = sources.find((f) => f.name === name)?.code ?? '';
-      expect(code).toMatch(/budget: /);
+      expect(code).toMatch(/_shared\/generate\.ts/);
       expect(code).not.toMatch(/maxOutputTokens/);
+      expect(code).not.toMatch(/budget: /);
     },
   );
 
-  it.each(['scripture', 'followup'])('%s imports no Gemini client at all', (name) => {
-    const code = sources.find((f) => f.name === name)?.code ?? '';
-    expect(code).not.toMatch(/from '\.\.\/_shared\/gemini/);
-    expect(code).not.toMatch(/maxOutputTokens/);
+  it('study and devotional name theirs in the shared generator', () => {
+    // Both moved into _shared/generate.ts so the scheduled prewarm produces
+    // exactly what a reader would get, byte for byte, and lands in the cache
+    // they would have hit.
+    const generate = readFileSync(path.join(FUNCTIONS, '_shared/generate.ts'), 'utf8');
+    expect(generate.match(/budget: 'standard'/g)).toHaveLength(2);
+    expect(generate.match(/thinkingLevel: 'low'/g)).toHaveLength(2);
+    expect(generate).not.toMatch(/maxOutputTokens/);
+
+    for (const name of ['study', 'devotional']) {
+      const code = sources.find((f) => f.name === name)?.code ?? '';
+      expect(code).toMatch(/_shared\/generate\.ts/);
+      expect(code).not.toMatch(/maxOutputTokens/);
+    }
   });
+
+  it.each(['scripture', 'followup', 'email-subscription'])(
+    '%s imports no Gemini client at all',
+    (name) => {
+      const code = sources.find((f) => f.name === name)?.code ?? '';
+      expect(code).not.toMatch(/from '\.\.\/_shared\/gemini/);
+      expect(code).not.toMatch(/maxOutputTokens/);
+    },
+  );
 
   it('leaves no hard-coded token number anywhere in the functions', () => {
     for (const { name, code } of sources) {

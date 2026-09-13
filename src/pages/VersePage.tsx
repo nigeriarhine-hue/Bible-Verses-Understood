@@ -47,9 +47,19 @@ export default function VersePage() {
 
   const { data: passage, loading: passageLoading, error: passageError } = usePassage(reference, translation);
 
-  const [study, setStudy] = useState<Study | null>(null);
-  const [studyLoading, setStudyLoading] = useState(false);
-  const [studyError, setStudyError] = useState<{ message: string; code: string } | null>(null);
+  /**
+   * What we know about the explanation, tagged with the passage it belongs to.
+   *
+   * Keeping the tag in the state is what stops the previous passage's
+   * explanation showing for a frame while the effect that clears it catches
+   * up: anything whose key does not match the passage on screen is ignored.
+   */
+  const [result, setResult] = useState<{
+    key: string;
+    study?: Study;
+    error?: { message: string; code: string };
+    loading?: boolean;
+  } | null>(null);
   const [savingStudy, setSavingStudy] = useState(false);
 
   const navigationState = location.state as
@@ -103,45 +113,53 @@ export default function VersePage() {
   /* --------------------------------------------------------------------- */
   /* Commentary                                                            */
   /* --------------------------------------------------------------------- */
-  const loadStudy = useCallback(
-    async () => {
-      if (!passage) return;
-      const cached = getCachedStudy(passage.reference.reference, passage.translation);
-      if (cached) {
-        setStudy(cached);
-        setStudyError(null);
-        return;
-      }
-      setStudyLoading(true);
-      setStudyError(null);
-      try {
-        const result = await getStudy(
-          passage.reference.reference,
-          passage.translation,
-          passage.text,
-        );
-        setStudy(result);
-      } catch (error) {
-        setStudy(null);
-        setStudyError({
+  const passageKey = passage ? `${passage.reference.reference}|${passage.translation}` : '';
+
+  /**
+   * A locally cached explanation, read during render rather than in an effect.
+   *
+   * Returning to a passage paints the explanation in the same frame as the
+   * Scripture — no skeleton, no request, nothing to wait for.
+   */
+  const cachedStudy = useMemo(
+    () => (passage ? getCachedStudy(passage.reference.reference, passage.translation) : null),
+    [passage],
+  );
+
+  const current = result?.key === passageKey ? result : null;
+  const study = current?.study ?? cachedStudy;
+  const studyError = current?.error ?? null;
+  const studyLoading = Boolean(current?.loading);
+
+  const loadStudy = useCallback(async () => {
+    if (!passage) return;
+    const key = `${passage.reference.reference}|${passage.translation}`;
+    setResult({ key, loading: true });
+    try {
+      const study = await getStudy(passage.reference.reference, passage.translation, passage.text);
+      setResult({ key, study });
+    } catch (error) {
+      setResult({
+        key,
+        error: {
           message:
             error instanceof CommentaryError
               ? error.message
               : 'The explanation could not be loaded. Please try again.',
           code: error instanceof CommentaryError ? error.code : 'failed',
-        });
-      } finally {
-        setStudyLoading(false);
-      }
-    },
-    [passage],
-  );
+        },
+      });
+    }
+  }, [passage]);
 
+  // The request starts in the same effect that notices the Scripture arrived —
+  // nothing else on the page is waited on. A passage already cached locally
+  // never reaches the network at all.
   useEffect(() => {
-    setStudy(null);
-    if (passage) void loadStudy();
+    if (!passage || cachedStudy) return;
+    void loadStudy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passage?.reference.reference, passage?.translation]);
+  }, [passageKey]);
 
   const onSaveStudy = async () => {
     if (!study) return;

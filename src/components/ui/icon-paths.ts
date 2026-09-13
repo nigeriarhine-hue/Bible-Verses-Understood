@@ -6,6 +6,7 @@
  * than religious imagery, so Scripture stays the focus.
  */
 export type IconName =
+  | 'mail'
   | 'search'
   | 'book'
   | 'compass'
@@ -115,6 +116,8 @@ export const PATHS: Record<IconName, string> = {
   reins: 'M5 6c5 0 5 12 14 12M5 18c5 0 5-12 14-12M3 6h2M3 18h2M19 4v4M19 16v4',
   tools: 'm5 19 7-7M14.5 3.5a4 4 0 0 0 5 5l-9 9-5-5 9-9ZM4 20l2-2',
   fork: 'M12 21V12M12 12 6 5M12 12l6-7M6 5V3M18 5V3',
+  mail:
+    'M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5zM3.6 7l7.3 5.2a2 2 0 0 0 2.2 0L20.4 7',
   key: 'M15 9a4 4 0 1 0-3.5 4L9 15.5l1.5 1.5L9 18.5l1.5 1.5 2-2 2.5-2.5A4 4 0 0 0 15 9Z',
 };
 

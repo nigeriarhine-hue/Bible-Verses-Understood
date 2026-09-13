@@ -15,7 +15,9 @@ const flatten = (text: string) => text.replace(/\s+/g, ' ');
 
 const prompts = read('supabase/functions/_shared/prompts.ts');
 const situation = read('supabase/functions/situation/index.ts');
-const devotional = read('supabase/functions/devotional/index.ts');
+// The study and devotional prompts live in the shared generator, which is what
+// both the request handlers and the scheduled prewarm call.
+const devotional = read('supabase/functions/_shared/generate.ts');
 const flatPrompts = flatten(prompts);
 const flatSituation = flatten(situation);
 

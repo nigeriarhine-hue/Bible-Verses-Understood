@@ -89,6 +89,50 @@ export async function writeStudyCache(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Service-role access, for tables no reader may touch directly               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A PostgREST request made as the service role.
+ *
+ * Only for tables where the row-level policies deliberately grant nobody
+ * access — the send log, the run log, and the subscription rows a guest
+ * manages through a token rather than a session. Everything a signed-in reader
+ * owns goes through their own credentials instead, so RLS stays the thing
+ * enforcing privacy.
+ *
+ * Returns null when the project is not configured, so a caller can tell
+ * "unavailable" from "the request failed".
+ */
+export async function serviceFetch(path: string, init: RequestInit = {}): Promise<Response | null> {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return null;
+  try {
+    return await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...init,
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        ...(init.headers as Record<string, string> | undefined),
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** The rows a service-role read returned, or an empty list. */
+export async function serviceRows<T>(path: string): Promise<T[]> {
+  const res = await serviceFetch(path);
+  if (!res?.ok) return [];
+  try {
+    return (await res.json()) as T[];
+  } catch {
+    return [];
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Who the caller is, and what they have left for today                       */
 /* -------------------------------------------------------------------------- */
 

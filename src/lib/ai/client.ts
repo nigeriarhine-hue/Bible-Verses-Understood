@@ -1,6 +1,6 @@
+import { authToken } from '../authToken';
 import { cacheGet, cacheSet, DAY, HOUR } from '../cache';
 import { FUNCTIONS_URL, SUPABASE_ANON_KEY, isCommentaryConfigured } from '../env';
-import { supabase } from '../supabase';
 import {
   CommentaryError,
   EXPLANATION_MODE,
@@ -28,15 +28,9 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
     );
   }
 
-  // Pass the reader's token when they have one, so the function can apply
-  // per-account limits. Guests call with the public anon key.
-  let authToken = SUPABASE_ANON_KEY;
-  try {
-    const session = await supabase?.auth.getSession();
-    if (session?.data.session?.access_token) authToken = session.data.session.access_token;
-  } catch {
-    /* not signed in */
-  }
+  // Only waits the very first time, and only until the warm-up that started at
+  // boot settles. After that this is a read of a value already in hand.
+  const token = await authToken();
 
   let res: Response;
   try {
@@ -45,7 +39,7 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
       headers: {
         'Content-Type': 'application/json',
         ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY } : {}),
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
     });
@@ -96,11 +90,22 @@ export function getCachedStudy(reference: string, translation: string): Study | 
 }
 
 /**
+ * Requests in flight, so two callers asking for the same explanation at the
+ * same moment share one request rather than starting two.
+ *
+ * React mounts an effect twice in development, and a reader can return to a
+ * passage while its first request is still open. Either used to cost a second
+ * round trip — and, on a cold passage, a second generation.
+ */
+const inflight = new Map<string, Promise<Study>>();
+
+/**
  * The Simple Explanation for a passage.
  *
- * Three tiers stand between a reader and a billable request: this browser's
- * cache, then the shared study_cache in Postgres that every reader benefits
- * from, then Gemini. Only the third costs anything.
+ * Four things stand between a reader and a billable request, in this order and
+ * each cheaper than the next: this browser's cache, a request already in
+ * flight, the shared study_cache in Postgres that every reader benefits from,
+ * then Gemini. Only the last costs anything.
  */
 export async function getStudy(
   reference: string,
@@ -111,14 +116,23 @@ export async function getStudy(
   const cached = cacheGet<Study>(key);
   if (cached) return cached;
 
-  const study = await callFunction<Study>('study', {
+  const existing = inflight.get(key);
+  if (existing) return existing;
+
+  const request = callFunction<Study>('study', {
     reference,
     translation,
     mode: EXPLANATION_MODE,
     scriptureText,
-  });
-  cacheSet(key, study, STUDY_TTL);
-  return study;
+  })
+    .then((study) => {
+      cacheSet(key, study, STUDY_TTL);
+      return study;
+    })
+    .finally(() => inflight.delete(key));
+
+  inflight.set(key, request);
+  return request;
 }
 
 export async function getDevotional(input: {

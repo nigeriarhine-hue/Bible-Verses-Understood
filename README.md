@@ -83,9 +83,53 @@ git-ignored.
 | `ESV_API_KEY` | Optional. Unlocks the ESV through the Crossway API. |
 | `API_BIBLE_KEY` | Optional. Unlocks whichever translations your API.Bible key is authorised for. |
 | `ALLOWED_ORIGINS` | Optional comma-separated list to lock the functions to your domains. |
+| `RESEND_API_KEY` | **Required for the daily email.** Never exposed to the browser. |
+| `EMAIL_FROM` | The verified sender on your Resend domain. |
+| `EMAIL_TOKEN_SECRET` | Signs unsubscribe links. Changing it invalidates links already in inboxes. |
+| `CRON_SECRET` | Shared by `prewarm` and `daily-email`; without it neither can be triggered. |
+| `SITE_URL` | The public site. Used for email links and to read the bundled Scripture. |
+| `EMAIL_TRANSLATION` | Optional. Public-domain translations only; anything else is refused. |
+| `PREWARM_REFERENCES` / `PREWARM_TRANSLATIONS` | Optional short lists to warm each morning. |
 
 > A service-role key or a Gemini key with a `VITE_` prefix would be compiled into
 > the browser bundle. Never do that.
+
+#### The daily verse email
+
+Opt-in only. Making an account does not subscribe anybody, and typing somebody
+else's address does not either: a guest's address gets one confirmation email
+and nothing more until the link in it is clicked. A signed-in reader's address
+is already verified by Supabase Auth, so theirs takes effect at once and is
+managed from their profile.
+
+**One devotional, everybody.** `daily-email` reads the day's general devotional
+from `study_cache` — `prewarm` has usually filled it half an hour earlier — and
+only generates if it is empty, once, before the first email goes out. Gemini is
+called at most once a day however many subscribers there are, and a personalised
+devotional is never used: it is written about one reader and belongs to them.
+
+**Sent once.** Every recipient is claimed by inserting into `daily_email_sends`,
+whose unique key is `(send_date, subscription_id)`. A second run of the same day
+claims nobody and therefore sends nobody anything. That is the database's
+guarantee, not a check in the function.
+
+**Scripture in email is public domain** — KJV by default. A licence to display a
+translation on a website is not a licence to redistribute it by email, so
+`EMAIL_TRANSLATION` accepts only the four bundled public-domain translations and
+refuses anything else. The site still shows whatever translation a reader has
+chosen.
+
+**Unsubscribing** needs no account: every email carries a link whose token is an
+HMAC of the subscription, so the sender can rebuild it without storing anything
+usable. A `List-Unsubscribe` header is sent too, so a mail client can offer it
+directly. An address the provider rejects is suppressed rather than retried
+every morning for ever.
+
+Scheduling lives in [`supabase/scheduling/`](supabase/scheduling/) — run once,
+by hand, because it carries a secret. One job sends to everybody; there is never
+a job per subscriber. `daily_email_subscriptions.timezone` is written from the
+start and read by nothing, so per-timezone delivery can be added later by
+running the sender hourly rather than by rebuilding anything.
 
 #### What calls Gemini, and how often
 
@@ -99,6 +143,12 @@ Gemini client at all, so an old browser gets a sentence rather than a bill.
 | `devotional` (general) | 5 | 15 | low | standard | 350-450 words | shared |
 | `devotional` (personalised) | — | 15 | low | standard | 350-450 words | private |
 | `situation` | 2 | 5 | low | standard | ≤ 500 words | never |
+
+Two more generate, and neither is reachable by the public: `prewarm` warms the
+day's verse ahead of the first reader (capped at 12 generations a run), and
+`daily-email` generates the day's devotional only if `prewarm` did not. Both
+require `CRON_SECRET`. `followup` and `email-subscription` import no Gemini
+client at all.
 
 `study` writes the Simple Explanation and nothing else. A request for `deep` or
 `scholar` is refused with 400 before the cache is even read, because hiding a

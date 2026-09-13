@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DailyEmailOptIn } from '../components/email/DailyEmailOptIn';
 import { AudioButton } from '../components/scripture/AudioButton';
 import { SaveVerseButton } from '../components/scripture/SaveVerseButton';
 import { ScriptureCard } from '../components/scripture/ScriptureCard';
@@ -235,6 +236,9 @@ export default function DailyPage() {
               </>
             ) : null}
           </section>
+
+          {/* The invitation comes after the reading, not in front of it. */}
+          <DailyEmailOptIn />
         </>
       )}
     </div>

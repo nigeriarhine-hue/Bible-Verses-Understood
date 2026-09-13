@@ -23,7 +23,12 @@ export interface Call {
     | 'private-write'
     | 'identity'
     | 'quota'
+    | 'resend'
+    | 'scripture'
+    | 'db'
     | 'other';
+  /** For a 'db' call, the table it touched. */
+  table?: string;
   url: string;
   method: string;
   body: unknown;
@@ -37,6 +42,7 @@ export interface Harness {
   gemini: () => Call[];
   cacheWrites: () => Call[];
   of: (kind: Call['kind']) => Call[];
+  onTable: (table: string) => Call[];
   /** The generationConfig of the first Gemini request, if one was made. */
   generationConfig: () => Record<string, unknown> | undefined;
 }
@@ -56,10 +62,25 @@ export interface HarnessOptions {
   quotaFails?: boolean;
   /** The JSON the model replies with. */
   geminiJson?: unknown;
+  /**
+   * Rows returned for a service-role read, keyed by table name. A POST to a
+   * table returns whatever `inserted` says, so a claim can be made to succeed
+   * or to find everything already taken.
+   */
+  rows?: Record<string, unknown[]>;
+  inserted?: Record<string, unknown[]>;
+  /** The bundled Scripture file the site would serve. */
+  scripture?: { chapters: string[][] };
+  /** How Resend answers. Defaults to accepting everything. */
+  resend?: { status?: number; body?: unknown };
 }
 
 const DEFAULT_ENV: Record<string, string | undefined> = {
   GOOGLE_GENERATIVE_AI_API_KEY: 'test-key-never-logged',
+  RESEND_API_KEY: 'resend-key-never-logged',
+  EMAIL_TOKEN_SECRET: 'token-secret-never-logged',
+  CRON_SECRET: 'cron-secret-never-logged',
+  SITE_URL: 'https://bible-verses-understood.vercel.app',
   GEMINI_MODEL: 'gemini-3.6-flash',
   SUPABASE_URL: 'https://project.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-key-never-logged',
@@ -157,6 +178,50 @@ export async function loadHandler(
       );
     }
 
+    if (url.includes('api.resend.com')) {
+      calls.push({ kind: 'resend', url, method, body, authorization });
+      const reply = options.resend ?? {};
+      const data = Array.isArray(body) ? body.map((_, i) => ({ id: `msg-${i}` })) : { id: 'msg-0' };
+      return new Response(JSON.stringify(reply.body ?? (Array.isArray(body) ? { data } : data)), {
+        status: reply.status ?? 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (url.includes('/scripture/')) {
+      calls.push({ kind: 'scripture', url, method, body, authorization });
+      // Big enough for any reference a test uses, so a missing chapter is a
+      // real failure rather than a thin fixture.
+      const filler = {
+        chapters: Array.from({ length: 30 }, (_, c) =>
+          Array.from({ length: 40 }, (_, v) => `Chapter ${c + 1} verse ${v + 1}.`),
+        ),
+      };
+      return new Response(JSON.stringify(options.scripture ?? filler), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Any other PostgREST table, answered from `rows` / `inserted`.
+    const table = /\/rest\/v1\/([a-z_]+)/.exec(url)?.[1];
+    if (table && !url.includes('study_cache') && !url.includes('user_devotional_cache')) {
+      calls.push({ kind: 'db', table, url, method, body, authorization });
+      if (method === 'POST') {
+        return new Response(JSON.stringify(options.inserted?.[table] ?? []), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (method === 'PATCH' || method === 'DELETE') {
+        return new Response('', { status: 204 });
+      }
+      return new Response(JSON.stringify(options.rows?.[table] ?? []), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     if (url.includes('study_cache')) {
       if (method === 'POST') {
         calls.push({ kind: 'cache-write', url, method, body, authorization });
@@ -185,6 +250,7 @@ export async function loadHandler(
     gemini: () => calls.filter((c) => c.kind === 'gemini'),
     cacheWrites: () => calls.filter((c) => c.kind === 'cache-write'),
     of: (kind) => calls.filter((c) => c.kind === kind),
+    onTable: (table) => calls.filter((c) => c.kind === 'db' && c.table === table),
     generationConfig: () => {
       const first = calls.find((c) => c.kind === 'gemini');
       return (first?.body as { generationConfig?: Record<string, unknown> })?.generationConfig;

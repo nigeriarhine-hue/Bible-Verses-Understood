@@ -34,7 +34,12 @@ export type AnalyticsEvent =
   | 'verse_shared'
   | 'audio_play'
   | 'account_signup'
-  | 'collection_created';
+  | 'collection_created'
+  // The daily email. Which action was taken, never who took it: an address is
+  // exactly the kind of thing the rule at the top of this file forbids.
+  | 'daily_email_subscribe'
+  | 'daily_email_unsubscribe'
+  | 'daily_email_cta_click';
 
 function gtag(...args: GtagArgs): void {
   if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;

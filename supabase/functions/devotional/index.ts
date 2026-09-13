@@ -14,15 +14,8 @@
  * Body: { reference, translation, scriptureText, date?, interests?[] }
  */
 import { failure, json, preflight } from '../_shared/cors.ts';
-import { GeminiError, generateJson, hasGeminiKey } from '../_shared/gemini.ts';
-import { validateRelated, type RelatedReference } from '../_shared/books.ts';
-import {
-  DEVOTIONAL_SCHEMA,
-  GUARDRAILS,
-  RELATED_SCRIPTURE_INSTRUCTION,
-  VOICE,
-  scriptureBlock,
-} from '../_shared/prompts.ts';
+import { GeminiError, hasGeminiKey } from '../_shared/gemini.ts';
+import { UnusableResponseError, generateDevotional } from '../_shared/generate.ts';
 import { DAILY_LIMIT_CODE, DAILY_LIMIT_MESSAGE } from '../_shared/quotas.ts';
 import {
   callerKey,
@@ -103,80 +96,13 @@ Deno.serve(async (req) => {
     return failure(req, DAILY_LIMIT_MESSAGE, 429, { code: DAILY_LIMIT_CODE });
   }
 
-  const system = [
-    'You write the daily devotional for Bible Verses Understood: one short,',
-    'unhurried reading that helps someone start or end a day with Scripture.',
-    '',
-    VOICE,
-    '',
-    GUARDRAILS,
-    '',
-    'Use these headings, in this order: "Today\'s Scripture" (two or three',
-    'sentences setting the passage in its context — do not restate the verse),',
-    '"Today\'s Thought", "Deeper Reflection", "For Your Life",',
-    '"One Small Action" (a single specific, achievable step today).',
-    'Then a reflection question and a short prayer of three or four sentences.',
-    'Around 350-450 words in total across the sections. Be concise and do not',
-    'repeat between sections; stop when the thought is complete rather than',
-    'filling the space.',
-    '',
-    RELATED_SCRIPTURE_INSTRUCTION,
-    'Return 2 related passages.',
-    '',
-    'Return JSON matching the schema. Section bodies are plain prose with no',
-    'Markdown formatting.',
-  ].join('\n');
-
-  const prompt = [
-    scriptureBlock(reference, translation, scriptureText),
-    '',
-    personalised
-      ? `Write today's devotional. The reader has said these subjects matter to them right now: ${interests.join(', ')}. Let one or two of those shape the reflection where the passage genuinely supports it — never force a connection, and never claim to know their circumstances.`
-      : "Write today's devotional for a general reader.",
-  ].join('\n');
-
   try {
-    const raw = await generateJson<Record<string, unknown>>({
-      system,
-      prompt,
-      schema: DEVOTIONAL_SCHEMA,
-      temperature: 0.7,
-      // A devotional is short reflective writing on a passage supplied in full,
-      // not analysis, so it does not need heavy reasoning either. Per request,
-      // so life-situation guidance — which does reason about what someone wrote
-      // — keeps the model's own judgement.
-      thinkingLevel: 'low',
-      budget: 'standard',
-    });
-
-    const sections = Array.isArray(raw.sections)
-      ? (raw.sections as Array<Record<string, unknown>>)
-          .map((section) => ({
-            heading: String(section.heading ?? '').trim(),
-            body: String(section.body ?? '').trim(),
-          }))
-          .filter((section) => section.heading && section.body)
-      : [];
-
-    if (sections.length === 0) {
-      return failure(req, 'The devotional could not be generated. Please try again.', 502);
-    }
-
-    const response = {
+    const response = await generateDevotional(
       reference,
       translation,
-      title: String(raw.title ?? '').trim() || 'Today’s Devotional',
-      sections,
-      reflectionQuestion: String(raw.reflectionQuestion ?? '').trim(),
-      prayer: String(raw.prayer ?? '').trim(),
-      isPersonalized: personalised,
-      relatedScripture: Array.isArray(raw.relatedScripture)
-        ? (raw.relatedScripture as Array<Record<string, unknown>>)
-            .map((entry) => validateRelated(entry))
-            .filter((entry): entry is RelatedReference => entry !== null)
-            .slice(0, 3)
-        : [],
-    };
+      scriptureText,
+      personalised ? interests : [],
+    );
 
     // Each result goes back to the cache it came from, and only there. The
     // shared one never receives a personalised devotional; the private one is
@@ -189,6 +115,9 @@ Deno.serve(async (req) => {
     }
     return json(req, response);
   } catch (error) {
+    if (error instanceof UnusableResponseError) {
+      return failure(req, `${error.message} Please try again.`, 502);
+    }
     if (error instanceof GeminiError) return failure(req, error.message, error.status);
     return failure(req, 'The devotional could not be generated. Please try again.', 502);
   }

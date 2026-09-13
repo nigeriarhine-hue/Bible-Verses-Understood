@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DailyEmailOptIn } from '../components/email/DailyEmailOptIn';
 import { TranslationSelector } from '../components/layout/TranslationSelector';
 import { Icon } from '../components/ui/Icon';
 import { SignedOutPrompt } from '../components/ui/SignedOutPrompt';
@@ -86,6 +87,13 @@ export default function ProfilePage() {
         </p>
         <div className="mt-4 max-w-xs">
           <TranslationSelector variant="block" />
+        </div>
+      </section>
+
+      <section className="glass p-5 sm:p-6">
+        <h2 className="display text-[1.25rem]">Daily email</h2>
+        <div className="mt-4">
+          <DailyEmailOptIn variant="setting" />
         </div>
       </section>
 

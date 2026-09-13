@@ -12,14 +12,13 @@
  * Body: { reference, translation, mode?, scriptureText }
  */
 import { failure, json, preflight } from '../_shared/cors.ts';
-import { GeminiError, generateJson, hasGeminiKey } from '../_shared/gemini.ts';
-import { validateRelated, type RelatedReference } from '../_shared/books.ts';
+import { GeminiError, hasGeminiKey } from '../_shared/gemini.ts';
 import {
-  STUDY_SCHEMA,
-  scriptureBlock,
-  studySystemPrompt,
-  type ExplanationMode,
-} from '../_shared/prompts.ts';
+  GENERATED_MODE,
+  UnusableResponseError,
+  generateSimpleStudy,
+  type StudyResponse,
+} from '../_shared/generate.ts';
 import { DAILY_LIMIT_CODE, DAILY_LIMIT_MESSAGE } from '../_shared/quotas.ts';
 import {
   callerKey,
@@ -30,35 +29,25 @@ import {
   writeStudyCache,
 } from '../_shared/store.ts';
 
-/** The only mode that generates. Anything else is refused without a Gemini call. */
-const GENERATED_MODE: ExplanationMode = 'simple';
 /** Modes that existed before and are now retired, named so the refusal is clear. */
-const RETIRED_MODES = ['deep', 'scholar'];
+const RETIRED_MODES: string[] = ['deep', 'scholar'];
 // Comfortably above the Bible's longest chapter (Psalm 119, ~13,200
 // characters in the KJV), so any real passage can be studied whole.
 const MAX_SCRIPTURE_CHARS = 20_000;
 
-interface StudyResponse {
-  reference: string;
-  translation: string;
-  mode: ExplanationMode;
-  summary: string;
-  sections: Array<{ heading: string; body: string }>;
-  keyTerms?: Array<{
-    term: string;
-    original?: string | null;
-    transliteration?: string | null;
-    language?: string | null;
-    meaning: string;
-  }>;
-  interpretations?: Array<{ position: string; heldBy?: string | null; summary: string }>;
-  reflectionQuestions?: string[];
-  prayer?: string | null;
-  relatedScripture: RelatedReference[];
-  cached?: boolean;
+/**
+ * How long a request took and whether it cost anything.
+ *
+ * Counts and durations only — no reference, no Scripture, no reader, nothing
+ * anybody typed. Enough to tell a slow cache from a slow model, which is the
+ * only question these logs exist to answer.
+ */
+function logTiming(outcome: 'hit' | 'generated' | 'refused', ms: number): void {
+  console.log('study:', JSON.stringify({ outcome, ms }));
 }
 
 Deno.serve(async (req) => {
+  const startedAt = Date.now();
   const pre = preflight(req);
   if (pre) return pre;
   if (req.method !== 'POST') return failure(req, 'Use POST.', 405);
@@ -95,8 +84,21 @@ Deno.serve(async (req) => {
   }
   if (!scriptureText) return failure(req, 'The Scripture text for this passage is required.');
   if (scriptureText.length > MAX_SCRIPTURE_CHARS) {
-    return failure(req, 'That passage is too long to study in one request. Try a shorter range.');
+    return failure(req, 'That passage to study is too long for one request. Try a shorter range.');
   }
+
+  // The cache is the first thing that happens after the request is understood
+  // — before the key is checked, before the allowance is touched. An
+  // explanation that already exists is the fastest and cheapest answer this
+  // function can give, and nothing should stand in front of it.
+  const cacheKey = await studyCacheKey(reference, translation, mode, scriptureText);
+  const cached = await readStudyCache<StudyResponse>(cacheKey);
+  if (cached) {
+    logTiming('hit', Date.now() - startedAt);
+    return json(req, { ...cached, cached: true });
+  }
+
+  // Only a miss needs any of this.
   if (!hasGeminiKey()) {
     return failure(
       req,
@@ -106,123 +108,22 @@ Deno.serve(async (req) => {
     );
   }
 
-  // The cache is read first and costs nothing, so an explanation that already
-  // exists is served whatever the allowance says — that is the point of the
-  // allowance being on generation rather than on reading.
-  const cacheKey = await studyCacheKey(reference, translation, mode, scriptureText);
-  const cached = await readStudyCache<StudyResponse>(cacheKey);
-  if (cached) return json(req, { ...cached, cached: true });
-
   const quota = await consumeDailyQuota(req, 'study');
   if (!quota.allowed) {
+    logTiming('refused', Date.now() - startedAt);
     return failure(req, DAILY_LIMIT_MESSAGE, 429, { code: DAILY_LIMIT_CODE });
   }
 
-  const prompt = [
-    scriptureBlock(reference, translation, scriptureText),
-    '',
-    `Write the simple explanation of ${reference} described in your instructions.`,
-  ].join('\n');
-
   try {
-    const raw = await generateJson<Record<string, unknown>>({
-      system: studySystemPrompt(),
-      prompt,
-      schema: STUDY_SCHEMA,
-      temperature: 0.6,
-      // A 300-word explanation of a passage that is supplied in full does not
-      // need deep reasoning, and reasoning is both billed and spent from the
-      // output budget. Asked for here rather than deployment-wide, so nothing
-      // else loses reasoning by accident.
-      thinkingLevel: 'low',
-      // Still the standard tier, not a tight one. The prompt controls length;
-      // this is only the ceiling that stops reasoning from truncating a reply.
-      budget: 'standard',
-    });
-
-    const related = Array.isArray(raw.relatedScripture)
-      ? (raw.relatedScripture as Array<Record<string, unknown>>)
-          .map((entry) => validateRelated(entry))
-          .filter((entry): entry is RelatedReference => entry !== null)
-          .filter((entry) => entry.reference !== reference)
-          .slice(0, 6)
-      : [];
-
-    const sections = Array.isArray(raw.sections)
-      ? (raw.sections as Array<Record<string, unknown>>)
-          .map((section) => ({
-            heading: String(section.heading ?? '').trim(),
-            body: String(section.body ?? '').trim(),
-          }))
-          .filter((section) => section.heading && section.body)
-      : [];
-
-    if (sections.length === 0) {
-      return failure(req, 'The commentary service returned an unusable response. Please try again.', 502);
-    }
-
-    const response: StudyResponse = {
-      reference,
-      translation,
-      mode: GENERATED_MODE,
-      summary: String(raw.summary ?? '').trim(),
-      sections,
-      keyTerms: normaliseKeyTerms(raw.keyTerms),
-      interpretations: normaliseInterpretations(raw.interpretations),
-      reflectionQuestions: normaliseStrings(raw.reflectionQuestions),
-      prayer: optionalString(raw.prayer),
-      relatedScripture: related,
-    };
-
+    const response = await generateSimpleStudy(reference, translation, scriptureText);
     await writeStudyCache(cacheKey, reference, translation, GENERATED_MODE, response);
+    logTiming('generated', Date.now() - startedAt);
     return json(req, response);
   } catch (error) {
+    if (error instanceof UnusableResponseError) {
+      return failure(req, `${error.message} Please try again.`, 502);
+    }
     if (error instanceof GeminiError) return failure(req, error.message, error.status);
     return failure(req, 'The explanation could not be generated. Please try again.', 502);
   }
 });
-
-function normaliseKeyTerms(value: unknown): StudyResponse['keyTerms'] {
-  if (!Array.isArray(value)) return undefined;
-  const terms = value
-    .map((entry) => {
-      const record = entry as Record<string, unknown>;
-      const term = String(record.term ?? '').trim();
-      const meaning = String(record.meaning ?? '').trim();
-      if (!term || !meaning) return null;
-      return {
-        term,
-        meaning,
-        original: optionalString(record.original),
-        transliteration: optionalString(record.transliteration),
-        language: optionalString(record.language),
-      };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-  return terms.length ? terms : undefined;
-}
-
-function normaliseInterpretations(value: unknown): StudyResponse['interpretations'] {
-  if (!Array.isArray(value)) return undefined;
-  const items = value
-    .map((entry) => {
-      const record = entry as Record<string, unknown>;
-      const position = String(record.position ?? '').trim();
-      const summary = String(record.summary ?? '').trim();
-      if (!position || !summary) return null;
-      return { position, summary, heldBy: optionalString(record.heldBy) };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-  return items.length ? items : undefined;
-}
-
-function normaliseStrings(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const items = value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
-  return items.length ? items : undefined;
-}
-
-function optionalString(value: unknown): string | null {
-  const text = String(value ?? '').trim();
-  return text ? text : null;
-}

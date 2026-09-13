@@ -106,11 +106,26 @@ describe('retired modes cost nothing', () => {
 });
 
 describe('the shared server-side cache', () => {
-  it('is read before Gemini', async () => {
+  it('is the very first thing the request does', async () => {
     const h = await load();
     await h.handler(post('study', { ...ASK, mode: 'simple' }));
     expect(h.calls[0]?.kind).toBe('cache-read');
     expect(h.calls[0]?.url).toContain('study_cache');
+  });
+
+  it('answers a hit without checking the key or the allowance', async () => {
+    // The fastest path there is: one read, then the response. A hit is served
+    // even by a deployment whose commentary service is not configured, because
+    // nothing about the cached answer needs it.
+    const h = await load({
+      cached: { ...STUDY, reference: 'John 3:16', mode: 'simple' },
+      env: { GOOGLE_GENERATIVE_AI_API_KEY: undefined },
+    });
+    const res = await h.handler(post('study', { ...ASK, mode: 'simple' }));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).cached).toBe(true);
+    expect(h.calls.map((c) => c.kind)).toEqual(['cache-read']);
   });
 
   it('serves a hit without calling Gemini at all', async () => {
