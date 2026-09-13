@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Spinner } from './components/ui/Spinner';
 import { AuthProvider } from './context/AuthContext';
@@ -15,7 +15,6 @@ const ChapterPage = lazy(() => import('./pages/ChapterPage'));
 const TopicsPage = lazy(() => import('./pages/TopicsPage'));
 const TopicPage = lazy(() => import('./pages/TopicPage'));
 const DailyPage = lazy(() => import('./pages/DailyPage'));
-const GuidancePage = lazy(() => import('./pages/GuidancePage'));
 const SavedPage = lazy(() => import('./pages/SavedPage'));
 const CollectionPage = lazy(() => import('./pages/CollectionPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
@@ -58,7 +57,9 @@ export default function App() {
                           <Route path="/topics" element={<TopicsPage />} />
                           <Route path="/topics/:slug" element={<TopicPage />} />
                           <Route path="/daily" element={<DailyPage />} />
-                          <Route path="/guidance" element={<GuidancePage />} />
+                          {/* Life-situation guidance was removed. A bookmark
+                              or an old link goes home rather than to a 404. */}
+                          <Route path="/guidance" element={<Navigate to="/" replace />} />
                           <Route path="/saved" element={<SavedPage />} />
                           <Route path="/collections/:id" element={<CollectionPage />} />
                           <Route path="/history" element={<HistoryPage />} />

@@ -14,12 +14,10 @@ const read = (relative: string) => readFileSync(path.join(ROOT, relative), 'utf8
 const flatten = (text: string) => text.replace(/\s+/g, ' ');
 
 const prompts = read('supabase/functions/_shared/prompts.ts');
-const situation = read('supabase/functions/situation/index.ts');
 // The study and devotional prompts live in the shared generator, which is what
 // both the request handlers and the scheduled prewarm call.
 const devotional = read('supabase/functions/_shared/generate.ts');
 const flatPrompts = flatten(prompts);
-const flatSituation = flatten(situation);
 
 describe('spiritual guidance boundaries', () => {
   it.each([
@@ -60,7 +58,8 @@ describe('spiritual guidance boundaries', () => {
 
   it('directs readers in crisis towards real support', () => {
     expect(flatPrompts).toMatch(/qualified professionals/i);
-    expect(flatSituation).toMatch(/crisis line/i);
+    expect(flatPrompts).toMatch(/grief, self-harm, abuse, addiction, or mental-health crisis/i);
+    expect(flatPrompts).toMatch(/never diagnose/i);
   });
 });
 
@@ -114,18 +113,6 @@ describe('the simple explanation, the only one that generates', () => {
     expect(flatPrompts).not.toMatch(/FOLLOWUP_SCHEMA/);
   });
 
-  it('caps life-situation guidance at 500 words without trimming its care', () => {
-    expect(flatSituation).toMatch(/hard limit/i);
-    expect(flatSituation).toMatch(/must come to 500 words or fewer/i);
-    expect(flatSituation).toMatch(/Aim for 300-450/);
-    // Length is taken out of the explanation, never out of the safety guidance.
-    // The instruction wraps across two source strings, so match both halves.
-    expect(flatSituation).toMatch(/never less about their/i);
-    expect(flatSituation).toMatch(/safety: the care above is not something to trim/i);
-    expect(flatSituation).toMatch(/local crisis line/);
-    expect(flatSituation).toMatch(/qualified professional/);
-  });
-
   it('keeps the devotional short without stripping it', () => {
     const flatDevotional = flatten(devotional);
     expect(flatDevotional).toMatch(/350-450 words/);
@@ -137,15 +124,4 @@ describe('the simple explanation, the only one that generates', () => {
     }
   });
 
-  it('uses the life-situation sections the product specifies', () => {
-    for (const heading of [
-      "What You're Facing",
-      'What the Passage Means',
-      'How It May Apply',
-      'Something to Consider',
-      'A Practical Next Step',
-    ]) {
-      expect(flatSituation).toContain(heading.replace("'", "\\'"));
-    }
-  });
 });

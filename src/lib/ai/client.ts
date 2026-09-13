@@ -6,7 +6,6 @@ import {
   EXPLANATION_MODE,
   type CommentaryErrorCode,
   type Devotional,
-  type SituationGuidance,
   type Study,
 } from './types';
 
@@ -149,14 +148,6 @@ export async function getDevotional(input: {
   const devotional = await callFunction<Devotional>('devotional', input);
   cacheSet(key, devotional, HOUR * 20);
   return devotional;
-}
-
-export async function searchLifeSituation(
-  situation: string,
-  translation: string,
-): Promise<SituationGuidance> {
-  // Never cached in shared storage — this is what someone said about their life.
-  return callFunction<SituationGuidance>('situation', { situation, translation });
 }
 
 export { CommentaryError };

@@ -135,28 +135,6 @@ export const STUDY_SCHEMA = {
   required: ['summary', 'sections', 'relatedScripture'],
 };
 
-export const SITUATION_SCHEMA = {
-  type: 'object',
-  properties: {
-    situationSummary: { type: 'string' },
-    primaryReference: {
-      type: 'object',
-      properties: {
-        book: { type: 'string' },
-        chapter: { type: 'integer' },
-        startVerse: { type: 'integer', nullable: true },
-        endVerse: { type: 'integer', nullable: true },
-        relevanceExplanation: { type: 'string' },
-      },
-      required: ['book', 'chapter', 'relevanceExplanation'],
-    },
-    sections: sectionArray,
-    prayer: { type: 'string', nullable: true },
-    relatedScripture: relatedScriptureSchema,
-  },
-  required: ['situationSummary', 'primaryReference', 'sections', 'relatedScripture'],
-};
-
 export const DEVOTIONAL_SCHEMA = {
   type: 'object',
   properties: {

@@ -24,21 +24,35 @@ describe('detectIntent', () => {
     }
   });
 
-  it('recognises life situations', () => {
-    for (const query of [
-      "I'm scared about losing my job.",
-      "I'm grieving.",
-      "I can't forgive someone.",
-      'My relationship is struggling.',
-      "I don't know my purpose.",
-    ]) {
-      expect(detectIntent(query)?.kind, query).toBe('situation');
+  it('finds the topic inside a sentence somebody wrote about themselves', () => {
+    // Life-situation guidance is gone, so these have to reach a topic that
+    // exists rather than a page that does not.
+    for (const [query, slug] of [
+      ["I'm grieving.", 'grief'],
+      ["I can't forgive someone.", 'forgiveness'],
+      ['My relationship is struggling.', 'relationships'],
+      ["I'm worried about my future.", 'anxiety'],
+    ] as const) {
+      const intent = detectIntent(query);
+      expect(intent?.kind, query).toBe('topic');
+      expect(intent?.kind === 'topic' && intent.slug, query).toBe(slug);
     }
   });
 
-  it('sends open questions to guidance rather than guessing a topic', () => {
-    expect(detectIntent('How should I handle conflict?')?.kind).toBe('situation');
-    expect(detectIntent('Why did Jesus speak in parables?')?.kind).toBe('situation');
+  it('hands anything it cannot place to the topic browser, with the query', () => {
+    const intent = detectIntent('Why did Jesus speak in parables?');
+    expect(intent?.kind).toBe('browse');
+    expect(intent?.kind === 'browse' && intent.query).toBe('Why did Jesus speak in parables?');
+  });
+
+  it('no longer routes anything to life-situation guidance', () => {
+    for (const query of [
+      "I'm scared about losing my job.",
+      'How should I handle conflict?',
+      'Something nobody has a topic for',
+    ]) {
+      expect(detectIntent(query)?.kind, query).not.toBe('situation');
+    }
   });
 
   it('returns nothing for an empty query', () => {

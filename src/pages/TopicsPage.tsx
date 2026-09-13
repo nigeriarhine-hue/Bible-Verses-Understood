@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Icon } from '../components/ui/Icon';
 import { topicIcon } from '../components/ui/icon-paths';
 import { trackEvent } from '../lib/analytics';
 import { TOPICS } from '../data/topics';
 
 export default function TopicsPage() {
-  const [filter, setFilter] = useState('');
+  // A search the home page could not place arrives here with what was typed,
+  // so the reader sees it applied rather than having to type it again.
+  const handedOver = (useLocation().state as { query?: string } | null)?.query ?? '';
+  const [filter, setFilter] = useState(handedOver);
   const query = filter.trim().toLowerCase();
 
   const topics = useMemo(() => {
@@ -47,8 +50,8 @@ export default function TopicsPage() {
       {topics.length === 0 ? (
         <div className="glass p-6">
           <p className="text-ui-base">
-            No topic matches “{filter.trim()}”. Try searching for it on the home page instead — the
-            search field understands questions and situations too.
+            No topic matches “{filter.trim()}”. Try a single word — “grief”, “patience”,
+            “forgiveness” — or search for a verse or chapter by reference.
           </p>
         </div>
       ) : (

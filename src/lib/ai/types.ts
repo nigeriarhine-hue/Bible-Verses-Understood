@@ -76,14 +76,6 @@ export interface Devotional {
   relatedScripture: RelatedScripture[];
 }
 
-export interface SituationGuidance {
-  situationSummary: string;
-  primaryReference: RelatedScripture;
-  sections: StudySection[];
-  prayer: string | null;
-  relatedScripture: RelatedScripture[];
-}
-
 /**
  * `daily_limit` is the day's AI allowance being spent, which is not a failure
  * and not something retrying fixes — Scripture and everything already written

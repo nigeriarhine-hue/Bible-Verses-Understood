@@ -26,7 +26,6 @@ const ROUTES = [
   ['topics', '/topics'],
   ['topic', '/topics/anxiety'],
   ['daily', '/daily'],
-  ['guidance', '/guidance'],
   ['saved', '/saved'],
   ['history', '/history'],
   ['profile', '/profile'],

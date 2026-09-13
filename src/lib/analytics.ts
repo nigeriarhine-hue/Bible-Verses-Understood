@@ -6,9 +6,9 @@
  * so a single-page navigation produces exactly one page_view — sent from here
  * on each route change, not from every component that renders.
  *
- * Privacy rule for this app: nothing a reader types about their own life, and
- * no conversation content, is ever sent here. Event parameters carry
- * references, translations and modes only.
+ * Privacy rule for this app: nothing a reader types is ever sent here. Event
+ * parameters carry references, translations and the kind of thing that
+ * happened — never the text of a search.
  */
 
 type GtagArgs =
@@ -66,8 +66,8 @@ function currentHref(): string | undefined {
 /**
  * Sends a named event.
  *
- * Parameter values are truncated and free text is refused: a life-situation
- * description or a follow-up question must never end up in analytics.
+ * Parameter values are truncated, and no caller passes free text: what
+ * somebody types into the search field must never end up in analytics.
  */
 export function trackEvent(name: AnalyticsEvent, params: Record<string, string | number | boolean> = {}): void {
   const safe: Record<string, string | number | boolean> = {};

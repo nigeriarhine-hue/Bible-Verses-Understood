@@ -27,7 +27,7 @@ declare
   allowed_count integer := 0;
 begin
   for i in 1..6 loop
-    select * into r from public.consume_ai_quota('situation', 'hash-of-a-guest', 2, 5);
+    select * into r from public.consume_ai_quota('devotional', 'hash-of-a-guest', 2, 5);
     if r.allowed then allowed_count := allowed_count + 1; end if;
     if r.signed_in then raise exception 'a guest was counted as signed in'; end if;
     if r.quota <> 2 then raise exception 'a guest was offered a quota of %, expected 2', r.quota; end if;
@@ -43,7 +43,7 @@ do $$
 declare v_used integer;
 begin
   select used into v_used from public.ai_usage
-   where bucket = 'guest:hash-of-a-guest' and endpoint = 'situation' and usage_date = current_date;
+   where bucket = 'guest:hash-of-a-guest' and endpoint = 'devotional' and usage_date = current_date;
   if v_used <> 2 then
     raise exception 'refused attempts still counted: used is %, expected 2', v_used;
   end if;
@@ -53,7 +53,7 @@ end $$;
 do $$
 declare r record;
 begin
-  select * into r from public.consume_ai_quota('situation', 'hash-of-another-guest', 2, 5);
+  select * into r from public.consume_ai_quota('devotional', 'hash-of-another-guest', 2, 5);
   if not r.allowed then raise exception 'one guest exhausted another guest''s allowance'; end if;
 end $$;
 
@@ -69,7 +69,7 @@ declare
   allowed_count integer := 0;
 begin
   for i in 1..9 loop
-    select * into r from public.consume_ai_quota('situation', 'hash-of-a-guest', 2, 5);
+    select * into r from public.consume_ai_quota('devotional', 'hash-of-a-guest', 2, 5);
     if r.allowed then allowed_count := allowed_count + 1; end if;
     if not r.signed_in then raise exception 'a signed-in reader was counted as a guest'; end if;
     if r.quota <> 5 then raise exception 'a reader was offered a quota of %, expected 5', r.quota; end if;
@@ -89,10 +89,10 @@ do $$
 declare v_guest integer; v_user integer;
 begin
   select used into v_guest from public.ai_usage
-   where bucket = 'guest:hash-of-a-guest' and endpoint = 'situation' and usage_date = current_date;
+   where bucket = 'guest:hash-of-a-guest' and endpoint = 'devotional' and usage_date = current_date;
   select used into v_user from public.ai_usage
    where bucket = 'user:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-     and endpoint = 'situation' and usage_date = current_date;
+     and endpoint = 'devotional' and usage_date = current_date;
 
   if v_guest <> 2 then
     raise exception 'a signed-in reader was charged to a guest bucket: it reads %, expected 2', v_guest;
@@ -105,7 +105,7 @@ end $$;
 set local role authenticated;
 set local request.jwt.claim.sub = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
--- Each endpoint is counted separately, so studying does not use up guidance.
+-- Each endpoint is counted separately, so studying does not use up devotionals.
 do $$
 declare r record;
 begin

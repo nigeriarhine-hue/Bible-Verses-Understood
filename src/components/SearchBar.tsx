@@ -52,8 +52,10 @@ export function SearchBar({
       navigate(`/topics/${intent.slug}`);
       return;
     }
-    trackEvent('verse_search', { intent: 'life_situation' });
-    navigate('/guidance', { state: { query: intent.query } });
+    // The query travels in route state, not in the analytics event: what a
+    // reader types is theirs, and the rule at the top of analytics.ts holds.
+    trackEvent('verse_search', { intent: 'browse' });
+    navigate('/topics', { state: { query: intent.query } });
   };
 
   const large = size === 'large';

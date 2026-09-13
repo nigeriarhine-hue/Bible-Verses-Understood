@@ -28,19 +28,17 @@ afterEach(() => {
 });
 
 describe('daily generation limits', () => {
-  it('gives life-situation guidance 2 for a guest and 5 for a reader', () => {
-    expect(dailyQuota('situation')).toEqual({ guest: 2, user: 5 });
-  });
-
-  it('is more generous where the result is cached and shared', () => {
-    // A study or a devotional is generated once and then served to everyone,
-    // so its limit only ever bites on genuinely new passages.
-    expect(dailyQuota('study').guest).toBeGreaterThan(dailyQuota('situation').guest);
-    expect(dailyQuota('devotional').guest).toBeGreaterThan(dailyQuota('situation').guest);
+  it('covers the two endpoints that still generate, and no others', () => {
+    expect(dailyQuota('study')).toEqual({ guest: 20, user: 50 });
+    expect(dailyQuota('devotional')).toEqual({ guest: 5, user: 15 });
+    // Life-situation guidance is gone from the type as well as from the table:
+    // there is no endpoint left for a quota to belong to.
+    const quotas = readFileSync(path.resolve(__dirname, 'quotas.ts'), 'utf8');
+    expect(quotas).not.toMatch(/situation/);
   });
 
   it('always allows a signed-in reader more than a guest', () => {
-    for (const endpoint of ['study', 'devotional', 'situation'] as const) {
+    for (const endpoint of ['study', 'devotional'] as const) {
       const { guest, user } = dailyQuota(endpoint);
       expect(user).toBeGreaterThan(guest);
       expect(guest).toBeGreaterThan(0);
@@ -48,19 +46,19 @@ describe('daily generation limits', () => {
   });
 
   it('can be raised or lowered by a secret, without a code change', () => {
-    withEnv({ AI_DAILY_LIMIT_SITUATION_GUEST: '1', AI_DAILY_LIMIT_SITUATION_USER: '25' });
-    expect(dailyQuota('situation')).toEqual({ guest: 1, user: 25 });
+    withEnv({ AI_DAILY_LIMIT_DEVOTIONAL_GUEST: '1', AI_DAILY_LIMIT_DEVOTIONAL_USER: '25' });
+    expect(dailyQuota('devotional')).toEqual({ guest: 1, user: 25 });
   });
 
   it('can switch a feature off entirely with a zero', () => {
-    withEnv({ AI_DAILY_LIMIT_SITUATION_GUEST: '0' });
-    expect(dailyQuota('situation').guest).toBe(0);
+    withEnv({ AI_DAILY_LIMIT_DEVOTIONAL_GUEST: '0' });
+    expect(dailyQuota('devotional').guest).toBe(0);
   });
 
   it('leaves the other endpoints alone when one is overridden', () => {
     withEnv({ AI_DAILY_LIMIT_STUDY_GUEST: '3' });
     expect(dailyQuota('study').guest).toBe(3);
-    expect(dailyQuota('situation')).toEqual({ guest: 2, user: 5 });
+    expect(dailyQuota('devotional')).toEqual({ guest: 5, user: 15 });
   });
 
   it.each([
@@ -70,8 +68,8 @@ describe('daily generation limits', () => {
     ['absurd', '999999'],
   ])('ignores a limit that is %s rather than leaving it unlimited', (_label, value) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    withEnv({ AI_DAILY_LIMIT_SITUATION_GUEST: value });
-    expect(dailyQuota('situation').guest).toBe(2);
+    withEnv({ AI_DAILY_LIMIT_DEVOTIONAL_GUEST: value });
+    expect(dailyQuota('devotional').guest).toBe(5);
     expect(warn).toHaveBeenCalledTimes(1);
   });
 });

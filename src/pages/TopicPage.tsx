@@ -169,16 +169,6 @@ export default function TopicPage() {
         </ul>
       )}
 
-      <section className="glass p-5 sm:p-6">
-        <h2 className="display text-[1.25rem]">Something more specific?</h2>
-        <p className="mt-2 text-ui-base muted">
-          If you are facing something particular rather than reading around a subject, describe it in
-          your own words and we will find a passage that speaks to it.
-        </p>
-        <Link to="/guidance" className="btn btn-primary mt-4">
-          Describe what you are facing
-        </Link>
-      </section>
     </div>
   );
 }

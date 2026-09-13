@@ -12,6 +12,9 @@ const SOURCE_LABEL: Record<string, string> = {
   daily: 'Verse of the Day',
   history: 'Revisited',
   saved: 'From your saved verses',
+  // Nothing writes this any more — life-situation guidance was removed — but
+  // rows recorded before that still carry it, and they deserve a sentence
+  // rather than a blank.
   life_situation: 'From a life-situation search',
   browse: 'While reading a chapter',
 };

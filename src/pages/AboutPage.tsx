@@ -109,7 +109,7 @@ export default function AboutPage() {
             translation, history and study trail stay in your own browser.
           </p>
           <p>
-            What you write in a life-situation search or a follow-up question is used to answer that
+            What you type into the search field is used to answer that
             question and nothing else. It is not stored in our database and is never sent to
             analytics. Analytics records which kinds of pages are used — a reference, a translation,
             a mode — never anything personal you have typed.

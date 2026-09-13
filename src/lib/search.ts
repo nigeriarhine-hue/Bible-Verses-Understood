@@ -5,14 +5,15 @@ import { TOPICS } from '../data/topics';
 /**
  * Works out what a reader meant by what they typed.
  *
- * The search box is the front door for four different things: an exact verse or
- * range, a chapter, a topic, and a sentence about their own life. Getting this
- * right is what makes one field enough.
+ * The search box is the front door for an exact verse or range, a chapter, and
+ * a topic. Anything it cannot place goes to the topic browser carrying what was
+ * typed, so the reader lands somewhere with the query in hand rather than on an
+ * apology.
  */
 export type SearchIntent =
   | { kind: 'reference'; reference: BibleReference }
   | { kind: 'topic'; slug: string; name: string }
-  | { kind: 'situation'; query: string };
+  | { kind: 'browse'; query: string };
 
 const TOPIC_LOOKUP = new Map<string, { slug: string; name: string }>();
 for (const topic of TOPICS) {
@@ -30,6 +31,8 @@ const TOPIC_SYNONYMS: Record<string, string> = {
   depressed: 'discouragement',
   sad: 'grief',
   mourning: 'grief',
+  grieve: 'grief',
+  grieving: 'grief',
   lonely: 'loneliness',
   alone: 'loneliness',
   forgive: 'forgiveness',
@@ -55,10 +58,6 @@ const TOPIC_SYNONYMS: Record<string, string> = {
   illness: 'healing',
 };
 
-/** Phrases that mean "the reader is telling us about their life". */
-const PERSONAL_MARKERS =
-  /\b(i'?m|i am|i feel|i felt|i can'?t|i cannot|i don'?t|i do not|my |me |we'?re|we are|our )/i;
-
 export function detectIntent(rawQuery: string): SearchIntent | null {
   const query = rawQuery.trim();
   if (!query) return null;
@@ -69,10 +68,7 @@ export function detectIntent(rawQuery: string): SearchIntent | null {
 
   const normalised = query.toLowerCase().replace(/[?.!,]/g, '').replace(/\s+/g, ' ').trim();
 
-  // 2. Something about the reader's own situation goes to life-situation search.
-  if (PERSONAL_MARKERS.test(query)) return { kind: 'situation', query };
-
-  // 3. "verses about X", "what does the bible say about X" → topic if we have one.
+  // 2. "verses about X", "what does the bible say about X" → topic if we have one.
   const aboutMatch =
     /(?:what does the bible say about|what the bible says about|bible verses about|verses about|scriptures? about|passages about|about)\s+(.+)$/.exec(
       normalised,
@@ -82,15 +78,23 @@ export function detectIntent(rawQuery: string): SearchIntent | null {
   const topic = lookupTopic(subject);
   if (topic) return { kind: 'topic', ...topic };
 
-  // 4. A bare word or two that matches a topic.
+  // 3. A bare word or two that matches a topic.
   if (!aboutMatch && subject.split(' ').length <= 3) {
     const fuzzy = lookupTopic(subject);
     if (fuzzy) return { kind: 'topic', ...fuzzy };
   }
 
-  // 5. Anything else is a question or a description — let the guidance search
-  //    handle it, which is better at open-ended wording than a keyword match.
-  return { kind: 'situation', query };
+  // 4. A word anywhere in the sentence — "I'm struggling with grief" should
+  //    still reach grief. The whole query is scanned, not just the subject
+  //    extracted above: "I'm worried about my future" keeps its "worried".
+  for (const word of normalised.split(' ')) {
+    const match = lookupTopic(word);
+    if (match) return { kind: 'topic', ...match };
+  }
+
+  // 5. Nothing matched. The topic browser gets the query and shows what is
+  //    there, which is honest about what this app can actually offer.
+  return { kind: 'browse', query };
 }
 
 function lookupTopic(subject: string): { slug: string; name: string } | null {
@@ -119,7 +123,7 @@ export const SEARCH_EXAMPLES = [
   'Romans 8:28-30',
   'What does the Bible say about anxiety?',
   'Verses about forgiveness',
-  "I'm worried about my future.",
-  "I'm struggling with grief.",
-  'How should I handle conflict?',
+  'Grief',
+  'Patience',
+  'Hope',
 ];

@@ -11,7 +11,7 @@
  * than leaving an endpoint unlimited or unusable.
  */
 
-export type QuotaEndpoint = 'study' | 'devotional' | 'situation';
+export type QuotaEndpoint = 'study' | 'devotional';
 
 export interface DailyQuota {
   /** A visitor without an account, identified by a hash of their address. */
@@ -21,14 +21,14 @@ export interface DailyQuota {
 }
 
 /**
- * Life-situation guidance is the expensive one: it is never cached, because it
- * is written about what somebody said about their life. The other two are
- * cached and shared, so their limits only ever bite on genuinely new passages.
+ * Both of these are cached and shared, so a limit only ever bites on a passage
+ * nobody has read yet. The generous numbers are the point: a reader exploring
+ * new ground should not meet a wall, and a reader re-reading never touches
+ * these at all.
  */
 const DEFAULTS: Record<QuotaEndpoint, DailyQuota> = {
   study: { guest: 20, user: 50 },
   devotional: { guest: 5, user: 15 },
-  situation: { guest: 2, user: 5 },
 };
 
 /** A limit below this would make a feature look broken rather than capped. */

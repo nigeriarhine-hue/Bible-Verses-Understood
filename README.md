@@ -73,7 +73,7 @@ git-ignored.
 
 | Variable | Purpose |
 | --- | --- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation, devotional and life-situation answer.** |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | **Required for every explanation and devotional.** |
 | `GEMINI_MODEL` | Optional model override. Defaults to `gemini-3.6-flash`. |
 | `GEMINI_FALLBACK_MODEL` | Optional. Tried once, and only when the primary model answers HTTP 503 / `UNAVAILABLE`. Confirm the name first with `npm run gemini:models -- --check <model>`. |
 | `GEMINI_MAX_OUTPUT_TOKENS` | Optional ceiling on output tokens per request. Defaults to `65536`, what `gemini-3.6-flash` accepts. Set it only for a model that accepts less. |
@@ -133,8 +133,8 @@ running the sender hourly rather than by rebuilding anything.
 
 #### What calls Gemini, and how often
 
-Three endpoints generate: `study`, `devotional` and `situation`. `scripture`
-never has, and `followup` no longer does — it answers 410 and imports no
+Two endpoints generate for readers: `study` and `devotional`. `scripture` never
+has. `followup` and `situation` no longer do — each answers 410 and imports no
 Gemini client at all, so an old browser gets a sentence rather than a bill.
 
 | Endpoint | Guest / day | Reader / day | Thinking | Tier | Length | Cached |
@@ -142,13 +142,12 @@ Gemini client at all, so an old browser gets a sentence rather than a bill.
 | `study` (Simple) | 20 | 50 | low | standard | ≤ 300 words | shared |
 | `devotional` (general) | 5 | 15 | low | standard | 350-450 words | shared |
 | `devotional` (personalised) | — | 15 | low | standard | 350-450 words | private |
-| `situation` | 2 | 5 | low | standard | ≤ 500 words | never |
 
 Two more generate, and neither is reachable by the public: `prewarm` warms the
 day's verse ahead of the first reader (capped at 12 generations a run), and
 `daily-email` generates the day's devotional only if `prewarm` did not. Both
-require `CRON_SECRET`. `followup` and `email-subscription` import no Gemini
-client at all.
+require `CRON_SECRET`. `followup`, `situation` and `email-subscription` import
+no Gemini client at all.
 
 `study` writes the Simple Explanation and nothing else. A request for `deep` or
 `scholar` is refused with 400 before the cache is even read, because hiding a
@@ -164,8 +163,7 @@ token so row-level security is what keeps it private — not the correctness of
 the key. Its identity includes the reader's id and the set of interests they
 chose, so changing those interests produces a different devotional rather than
 an old one. A guest asking for a personalised devotional gets the general one:
-there is nowhere private to keep theirs. Life-situation guidance is never
-cached anywhere, which is why it has the tightest allowance.
+there is nowhere private to keep theirs.
 
 **Allowances.** Every generation is counted in Postgres by
 `consume_ai_quota`, which decides who the caller is from the verified JWT
@@ -180,11 +178,11 @@ When an allowance runs out the endpoint answers 429 with
 previously prepared explanations remain available — which is true: Scripture
 never touches Gemini, and both caches are read before the allowance is.
 
-Every limit can be moved with a secret, e.g. `AI_DAILY_LIMIT_SITUATION_USER=10`.
+Every limit can be moved with a secret, e.g. `AI_DAILY_LIMIT_DEVOTIONAL_USER=30`.
 
-`thinkingLevel: 'low'` is asked for per request on all three: these are short
-pieces about text supplied in full, and reasoning is billed and spent from the
-same output budget as the answer.
+`thinkingLevel: 'low'` is asked for per request on both: these are short pieces
+about text supplied in full, and reasoning is billed and spent from the same
+output budget as the answer.
 
 #### Output token budgets
 
@@ -197,7 +195,7 @@ never a number:
 | Budget | Tokens | Used by |
 | --- | --- | --- |
 | `standard` | 16,384 | Simple Explanation, devotional |
-| `long` | 32,768 | Life-situation guidance |
+| `long` | 32,768 | Nothing at present |
 | `maximum` | ceiling (65,536) | Nothing at present; the ceiling everything clamps to |
 
 A budget is a ceiling, not a target — the prompts ask for 300 words or fewer for
@@ -250,6 +248,9 @@ supabase functions deploy followup
 supabase functions deploy devotional
 supabase functions deploy situation
 supabase functions deploy scripture
+supabase functions deploy prewarm
+supabase functions deploy daily-email
+supabase functions deploy email-subscription
 ```
 
 Locally:
@@ -451,8 +452,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/user-journey.test.sql
 ```
 
 Signed out, a reader's translation, history and study trail live in their own
-browser and are never sent anywhere. Life-situation text and follow-up questions
-are used to answer that one request and are not stored.
+browser and are never sent anywhere. What a reader types into the search field
+is used to find them a passage and is not stored or sent to analytics.
 
 ---
 

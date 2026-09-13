@@ -94,15 +94,49 @@ describe('the retired controls are gone from the UI', () => {
     ['the follow-up client call', /askFollowUp|FollowUpAnswer/],
     ['an invitation to ask a question', /Ask a question|Ask anything|ask a follow-?up/i],
     ['the mode-change analytics event', /explanation_mode_change/],
+    ['the life-situation prompt', /What are you facing|Describe what you are facing/],
+    ['the life-situation client call', /searchLifeSituation|SituationGuidance/],
+    ['the guidance page', /GuidancePage/],
   ])('no longer mentions %s', (_label, pattern) => {
     const offenders = files.filter((file) => pattern.test(readFileSync(file, 'utf8')));
     expect(offenders.map((f) => path.relative(SRC, f))).toEqual([]);
   });
 
-  it('has no component files left for either feature', () => {
+  it('has no component or page files left for any of them', () => {
     const components = readdirSync(path.join(SRC, 'components/study'));
     expect(components).not.toContain('ExplanationModeTabs.tsx');
     expect(components).not.toContain('FollowUpPanel.tsx');
+    expect(readdirSync(path.join(SRC, 'pages'))).not.toContain('GuidancePage.tsx');
+  });
+
+  it('sends an old /guidance bookmark home rather than to a 404', () => {
+    const app = readFileSync(path.join(SRC, 'App.tsx'), 'utf8');
+    expect(app).toMatch(/path="\/guidance" element=\{<Navigate to="\/" replace \/>\}/);
+    // And nothing in the app links there any more, so the redirect only ever
+    // serves a bookmark or an old link from somewhere else.
+    const linking = files.filter((file) =>
+      /(?:to|href)=["'`]\/guidance/.test(readFileSync(file, 'utf8')),
+    );
+    expect(linking.map((f) => path.relative(SRC, f))).toEqual([]);
+  });
+
+  it('leaves no navigation item pointing at a removed feature', () => {
+    const layout = readdirSync(path.join(SRC, 'components/layout'))
+      .filter((name) => name.endsWith('.tsx'))
+      .map((name) => readFileSync(path.join(SRC, 'components/layout', name), 'utf8'))
+      .join('\n');
+    for (const gone of ['/guidance', 'Guidance', 'life-situation', 'What are you facing']) {
+      expect(layout).not.toContain(gone);
+    }
+  });
+
+  it('cannot ask the situation endpoint for anything', () => {
+    const client = readFileSync(path.join(SRC, 'lib/ai/client.ts'), 'utf8');
+    expect(client).not.toMatch(/searchLifeSituation/);
+    expect(client).not.toMatch(/'situation'/);
+    // The three functions it can still call, and nothing else.
+    const called = [...client.matchAll(/callFunction<[^>]*>\(\s*'([a-z-]+)'/g)].map((m) => m[1]);
+    expect([...new Set(called)].sort()).toEqual(['devotional', 'study']);
   });
 
   it('still offers the one explanation, by name', () => {
@@ -146,16 +180,15 @@ describe('analytics still carry nothing private', () => {
     expect(String(sent[0]?.[1].query)).toHaveLength(100);
   });
 
-  it('is never handed the variables that hold what a reader wrote', () => {
-    // Guidance is the page that takes free text. `situation` is the textarea's
-    // value and `submitted` is what was sent to the model; neither may appear
-    // as a value in an event. A literal like 'life_situation' is a category
-    // name, not something anyone typed, so only bare identifiers are checked.
-    const source = readFileSync(path.join(SRC, 'pages/GuidancePage.tsx'), 'utf8');
+  it('is never handed the variables that hold what a reader typed', () => {
+    // The search field is the only free-text input left. What was typed travels
+    // in route state to the topic browser; the event carries the kind of search
+    // and nothing else.
+    const source = readFileSync(path.join(SRC, 'components/SearchBar.tsx'), 'utf8');
     const calls = source.match(/trackEvent\([\s\S]{0,200}?\);/g) ?? [];
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
-      expect(call).not.toMatch(/[:{,]\s*(situation|submitted|query|question)\b/);
+      expect(call).not.toMatch(/[:{,]\s*(query|situation|submitted|question)\b/);
       expect(call).not.toMatch(/\$\{/);
     }
   });

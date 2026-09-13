@@ -142,12 +142,6 @@ describe('every AI function asks for a named budget', () => {
     ]);
   });
 
-  it('situation names a budget where it asks for one', () => {
-    const code = sources.find((f) => f.name === 'situation')?.code ?? '';
-    expect(code).toMatch(/budget: /);
-    expect(code).not.toMatch(/maxOutputTokens/);
-  });
-
   it.each(['prewarm', 'daily-email'])(
     '%s generates through the shared generator, so it names no limit of its own',
     (name) => {
@@ -174,7 +168,7 @@ describe('every AI function asks for a named budget', () => {
     }
   });
 
-  it.each(['scripture', 'followup', 'email-subscription'])(
+  it.each(['scripture', 'followup', 'situation', 'email-subscription'])(
     '%s imports no Gemini client at all',
     (name) => {
       const code = sources.find((f) => f.name === name)?.code ?? '';
