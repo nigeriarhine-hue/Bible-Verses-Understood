@@ -39,7 +39,7 @@ export function Header() {
             className="flex min-w-0 items-center gap-2.5 rounded-xl px-1 py-1"
             aria-label="Bible Verses Understood — home"
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[rgb(var(--gold))] text-[#241701]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[rgb(var(--accent-bright))] text-[#241701]">
               <Icon name="sunrise" className="h-5 w-5" />
             </span>
             <span className="min-w-0">
@@ -62,8 +62,8 @@ export function Header() {
                     className={({ isActive }) =>
                       `flex items-center gap-2 rounded-full px-3.5 py-2 text-ui-sm font-medium transition ${
                         isActive
-                          ? 'bg-white/15 text-[rgb(var(--ink-on-dark))]'
-                          : 'text-[rgb(var(--ink-on-dark-muted))] hover:bg-white/10 hover:text-[rgb(var(--ink-on-dark))]'
+                          ? 'bg-edge/15 text-[rgb(var(--ink))]'
+                          : 'text-[rgb(var(--ink-muted))] hover:bg-edge/10 hover:text-[rgb(var(--ink))]'
                       }`
                     }
                   >
@@ -126,7 +126,7 @@ function MobileMenu({ onNavigate }: { onNavigate: () => void }) {
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       `flex items-center gap-3 rounded-xl px-3 py-3 text-ui-base font-medium transition ${
-                        isActive ? 'bg-white/15' : 'hover:bg-white/10'
+                        isActive ? 'bg-edge/15' : 'hover:bg-edge/10'
                       }`
                     }
                   >
@@ -138,7 +138,7 @@ function MobileMenu({ onNavigate }: { onNavigate: () => void }) {
             </ul>
           </nav>
 
-          <div className="mt-4 border-t border-white/10 pt-4">
+          <div className="mt-4 border-t border-edge/10 pt-4">
             <p className="mb-2 text-ui-xs font-semibold uppercase tracking-wider muted">
               Bible translation
             </p>

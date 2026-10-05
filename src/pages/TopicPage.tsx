@@ -115,13 +115,13 @@ export default function TopicPage() {
 
   return (
     <div className="container-page space-y-4 pb-6">
-      <Link to="/topics" className="glass-pill transition hover:border-white/45">
+      <Link to="/topics" className="glass-pill transition hover:border-edge/45">
         <Icon name="arrow-left" className="h-4 w-4" />
         All topics
       </Link>
 
       <header className="glass px-5 py-6 sm:px-7">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[rgb(var(--gold))]">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-edge/10 text-[rgb(var(--accent))]">
           <Icon name={topicIcon(topic.icon)} className="h-6 w-6" />
         </span>
         <h1 className="display mt-3 text-[1.75rem] leading-tight sm:text-[2.25rem]">{topic.name}</h1>
@@ -146,20 +146,20 @@ export default function TopicPage() {
               <Link
                 to={referenceToPath(verse.reference)}
                 state={{ source: 'topic', resetTrail: true }}
-                className="glass group flex h-full flex-col gap-3 p-5 transition hover:border-white/35 hover:shadow-lift"
+                className="glass group flex h-full flex-col gap-3 p-5 transition hover:border-edge/35 hover:shadow-lift"
               >
-                <span className="display text-[1.0625rem] text-[rgb(var(--gold))]">
+                <span className="display text-[1.0625rem] text-[rgb(var(--accent))]">
                   {verse.reference.reference}
                 </span>
                 <span className="glass-light block rounded-xl px-3.5 py-3">
-                  <span className="block font-serif text-[0.97rem] leading-[1.65rem] text-[rgb(var(--ink-on-light))]">
+                  <span className="block font-serif text-[0.97rem] leading-[1.65rem] text-[rgb(var(--scripture-ink))]">
                     “{shorten(verse.preview, 180)}”
                   </span>
                 </span>
                 {verse.note ? (
                   <span className="text-ui-sm leading-relaxed muted">{verse.note}</span>
                 ) : null}
-                <span className="mt-auto inline-flex items-center gap-1.5 pt-1 text-ui-sm font-semibold text-[rgb(var(--gold))]">
+                <span className="mt-auto inline-flex items-center gap-1.5 pt-1 text-ui-sm font-semibold text-[rgb(var(--accent))]">
                   Understand This Verse
                   <Icon name="arrow-right" className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </span>

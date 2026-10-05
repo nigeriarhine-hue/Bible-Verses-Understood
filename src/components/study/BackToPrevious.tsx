@@ -14,7 +14,7 @@ export function BackToPrevious({ step }: { step: TrailStep | null }) {
     <Link
       to={step.path}
       state={{ source: 'history' }}
-      className="glass-pill transition hover:border-white/45 hover:bg-[rgb(var(--glass-dark))]"
+      className="glass-pill transition hover:border-edge/45 hover:bg-[rgb(var(--panel))]"
     >
       <Icon name="arrow-left" className="h-4 w-4 shrink-0" />
       <span className="truncate">Back to {step.reference}</span>

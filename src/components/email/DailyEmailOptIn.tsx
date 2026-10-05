@@ -108,7 +108,7 @@ export function DailyEmailOptIn({ variant = 'card' }: { variant?: 'card' | 'sett
 
   const note = message ? (
     <p
-      className={`mt-3 text-ui-sm ${message.tone === 'error' ? 'text-[rgb(var(--rose))]' : 'text-[rgb(var(--gold))]'}`}
+      className={`mt-3 text-ui-sm ${message.tone === 'error' ? 'text-[rgb(var(--danger))]' : 'text-[rgb(var(--accent))]'}`}
       role="status"
     >
       {message.text}
@@ -162,7 +162,7 @@ export function DailyEmailOptIn({ variant = 'card' }: { variant?: 'card' | 'sett
   return (
     <section className="glass p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <Icon name="mail" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--gold))]" />
+        <Icon name="mail" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--accent))]" />
         <div className="min-w-0 flex-1">
           <h2 className="display text-[1.25rem] leading-tight">Get the Verse of the Day</h2>
           <p className="mt-1.5 text-ui-sm">

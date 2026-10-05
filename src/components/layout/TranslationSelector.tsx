@@ -85,8 +85,8 @@ export function TranslationSelector({ variant = 'header' }: { variant?: 'header'
                 setOpen(false);
                 buttonRef.current?.focus();
               }}
-              className={`flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-white/10 ${
-                entry.abbreviation === translation ? 'bg-white/10' : ''
+              className={`flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-edge/10 ${
+                entry.abbreviation === translation ? 'bg-edge/10' : ''
               }`}
             >
               <span className="mt-0.5 w-14 shrink-0 text-ui-sm font-bold tracking-wide">
@@ -99,7 +99,7 @@ export function TranslationSelector({ variant = 'header' }: { variant?: 'header'
                 ) : null}
               </span>
               {entry.abbreviation === translation ? (
-                <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--gold))]" />
+                <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--accent))]" />
               ) : null}
             </button>
           ))}

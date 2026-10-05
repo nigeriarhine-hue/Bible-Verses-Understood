@@ -126,7 +126,7 @@ function BookRow({
         onClick={() => onToggle(open ? null : book.id)}
         aria-expanded={open}
         className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
-          open ? 'border-[rgb(var(--gold))]/50 bg-white/10' : 'border-white/12 hover:bg-white/10'
+          open ? 'border-[rgb(var(--accent-bright))]/50 bg-edge/10' : 'border-edge/12 hover:bg-edge/10'
         }`}
       >
         <span className="flex-1 text-ui-base font-medium">{book.name}</span>
@@ -137,7 +137,7 @@ function BookRow({
       </button>
 
       {open ? (
-        <div className="mt-2 rounded-xl border border-white/12 bg-white/[0.04] p-3">
+        <div className="mt-2 rounded-xl border border-edge/12 bg-edge/[0.04] p-3">
           <p className="mb-2.5 text-ui-xs font-semibold uppercase tracking-wider muted">
             Choose a chapter
           </p>
@@ -146,7 +146,7 @@ function BookRow({
               <li key={chapter}>
                 <Link
                   to={`/bible/${book.id}/${chapter}`}
-                  className="grid h-10 place-items-center rounded-lg border border-white/12 text-ui-sm font-medium transition hover:border-[rgb(var(--gold))]/60 hover:bg-[rgb(var(--gold))]/15"
+                  className="grid h-10 place-items-center rounded-lg border border-edge/12 text-ui-sm font-medium transition hover:border-[rgb(var(--accent-bright))]/60 hover:bg-[rgb(var(--accent-bright))]/15"
                 >
                   {chapter}
                 </Link>

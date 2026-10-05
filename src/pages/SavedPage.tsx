@@ -129,8 +129,8 @@ export default function SavedPage() {
               onClick={() => setTab(entry.id)}
               className={`rounded-xl px-3 py-2.5 text-ui-sm font-semibold transition ${
                 tab === entry.id
-                  ? 'bg-[rgb(var(--gold))] text-[#241701]'
-                  : 'hover:bg-white/10'
+                  ? 'bg-[rgb(var(--accent-bright))] text-[#241701]'
+                  : 'hover:bg-edge/10'
               }`}
             >
               {entry.label}
@@ -164,7 +164,7 @@ export default function SavedPage() {
                   <Link
                     to={pathFor(verse.reference)}
                     state={{ source: 'saved', resetTrail: true }}
-                    className="display text-[1.0625rem] text-[rgb(var(--gold))] hover:underline"
+                    className="display text-[1.0625rem] text-[rgb(var(--accent))] hover:underline"
                   >
                     {verse.reference}
                   </Link>
@@ -175,14 +175,14 @@ export default function SavedPage() {
                       setVerses((current) => current.filter((item) => item.id !== verse.id));
                       notify('Removed from your saved verses.');
                     }}
-                    className="-m-1 rounded-lg p-1 muted transition hover:text-[#ffb4a8]"
+                    className="-m-1 rounded-lg p-1 muted transition hover:text-[rgb(var(--danger))]"
                   >
                     <Icon name="trash" className="h-4 w-4" />
                     <span className="sr-only">Remove {verse.reference}</span>
                   </button>
                 </div>
                 {verse.verse_text ? (
-                  <p className="glass-light rounded-xl px-3.5 py-3 font-serif text-[0.97rem] leading-[1.65rem] text-[rgb(var(--ink-on-light))]">
+                  <p className="glass-light rounded-xl px-3.5 py-3 font-serif text-[0.97rem] leading-[1.65rem] text-[rgb(var(--scripture-ink))]">
                     “{verse.verse_text.length > 200 ? `${verse.verse_text.slice(0, 198)}…` : verse.verse_text}”
                   </p>
                 ) : null}
@@ -206,7 +206,7 @@ export default function SavedPage() {
                   <Link
                     to={pathFor(study.reference)}
                     state={{ source: 'saved', resetTrail: true }}
-                    className="display text-[1.0625rem] text-[rgb(var(--gold))] hover:underline"
+                    className="display text-[1.0625rem] text-[rgb(var(--accent))] hover:underline"
                   >
                     {study.reference}
                   </Link>
@@ -222,7 +222,7 @@ export default function SavedPage() {
                     setStudies((current) => current.filter((item) => item.id !== study.id));
                     notify('Study removed.');
                   }}
-                  className="-m-1 rounded-lg p-1 muted transition hover:text-[#ffb4a8]"
+                  className="-m-1 rounded-lg p-1 muted transition hover:text-[rgb(var(--danger))]"
                 >
                   <Icon name="trash" className="h-4 w-4" />
                   <span className="sr-only">Remove this study</span>
@@ -252,7 +252,7 @@ export default function SavedPage() {
                   <div className="flex items-start justify-between gap-3">
                     <Link
                       to={`/collections/${collection.id}`}
-                      className="display text-[1.0625rem] hover:text-[rgb(var(--gold))]"
+                      className="display text-[1.0625rem] hover:text-[rgb(var(--accent))]"
                     >
                       {collection.name}
                     </Link>
@@ -263,7 +263,7 @@ export default function SavedPage() {
                         setCollections((current) => current.filter((item) => item.id !== collection.id));
                         notify(`“${collection.name}” deleted.`);
                       }}
-                      className="-m-1 rounded-lg p-1 muted transition hover:text-[#ffb4a8]"
+                      className="-m-1 rounded-lg p-1 muted transition hover:text-[rgb(var(--danger))]"
                     >
                       <Icon name="trash" className="h-4 w-4" />
                       <span className="sr-only">Delete {collection.name}</span>

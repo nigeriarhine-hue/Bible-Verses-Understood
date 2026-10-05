@@ -33,7 +33,7 @@ export default function HomePage() {
         <h1 className="display text-[2rem] leading-[1.15] sm:text-[2.75rem] lg:text-[3.25rem]">
           Bible Verses Understood
         </h1>
-        <p className="mt-3 text-ui-lg text-[rgb(var(--ink-on-dark))] sm:text-[1.25rem]">
+        <p className="mt-3 text-ui-lg text-[rgb(var(--ink))] sm:text-[1.25rem]">
           Understand the Word. Apply it to your life.
         </p>
 
@@ -68,9 +68,9 @@ export default function HomePage() {
       <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           to="/bible"
-          className="glass group flex flex-col gap-3 p-5 transition hover:border-white/30 hover:shadow-lift"
+          className="glass group flex flex-col gap-3 p-5 transition hover:border-edge/30 hover:shadow-lift"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-[rgb(var(--gold))]">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-edge/10 text-[rgb(var(--accent))]">
             <Icon name="book" />
           </span>
           <span className="display text-xl">Browse the Bible</span>
@@ -78,7 +78,7 @@ export default function HomePage() {
             Old and New Testament, book by book and chapter by chapter. Choose any verse to
             understand it.
           </span>
-          <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-ui-sm font-semibold text-[rgb(var(--gold))]">
+          <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-ui-sm font-semibold text-[rgb(var(--accent))]">
             Open the Bible
             <Icon name="arrow-right" className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </span>
@@ -86,9 +86,9 @@ export default function HomePage() {
 
         <Link
           to="/topics"
-          className="glass group flex flex-col gap-3 p-5 transition hover:border-white/30 hover:shadow-lift"
+          className="glass group flex flex-col gap-3 p-5 transition hover:border-edge/30 hover:shadow-lift"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-[rgb(var(--gold))]">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-edge/10 text-[rgb(var(--accent))]">
             <Icon name="layers" />
           </span>
           <span className="display text-xl">Explore Topics</span>
@@ -96,14 +96,14 @@ export default function HomePage() {
             {TOPICS.length} subjects — anxiety, purpose, forgiveness, money, grief — each with
             passages worth sitting with.
           </span>
-          <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-ui-sm font-semibold text-[rgb(var(--gold))]">
+          <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-ui-sm font-semibold text-[rgb(var(--accent))]">
             See all topics
             <Icon name="arrow-right" className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </span>
         </Link>
 
         <div className="glass flex flex-col gap-3 p-5 sm:col-span-2 lg:col-span-1">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-[rgb(var(--gold))]">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-edge/10 text-[rgb(var(--accent))]">
             <Icon name="sunrise" />
           </span>
           <span className="display text-xl">Verse of the Day</span>
@@ -112,7 +112,7 @@ export default function HomePage() {
           ) : (
             <>
               <blockquote className="glass-light rounded-xl px-4 py-3">
-                <p className="font-serif text-[1.0625rem] leading-[1.75rem] text-[rgb(var(--ink-on-light))]">
+                <p className="font-serif text-[1.0625rem] leading-[1.75rem] text-[rgb(var(--scripture-ink))]">
                   {truncate(dailyPassage.text, 190)}
                 </p>
                 <cite className="mt-2 block text-ui-xs font-semibold not-italic muted-on-light">
@@ -134,7 +134,7 @@ export default function HomePage() {
         <section className="glass mt-5 p-5">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="display text-lg">Continue where you left off</h2>
-            <Link to="/history" className="text-ui-sm font-medium text-[rgb(var(--gold))] hover:underline">
+            <Link to="/history" className="text-ui-sm font-medium text-[rgb(var(--accent))] hover:underline">
               All history
             </Link>
           </div>
@@ -170,7 +170,7 @@ export default function HomePage() {
             <li key={topic.slug}>
               <Link
                 to={`/topics/${topic.slug}`}
-                className="glass flex h-full flex-col gap-1.5 p-4 transition hover:border-white/30"
+                className="glass flex h-full flex-col gap-1.5 p-4 transition hover:border-edge/30"
               >
                 <span className="display text-[1.0625rem]">{topic.name}</span>
                 <span className="text-ui-xs leading-relaxed muted">{topic.description}</span>

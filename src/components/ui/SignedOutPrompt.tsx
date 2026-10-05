@@ -14,7 +14,7 @@ export function SignedOutPrompt({
   return (
     <div className="container-page py-8">
       <div className="glass mx-auto max-w-xl p-6 sm:p-8">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[rgb(var(--gold))]">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-edge/10 text-[rgb(var(--accent))]">
           <Icon name="bookmark" className="h-6 w-6" />
         </span>
         <h1 className="display mt-4 text-[1.625rem] leading-tight">{title}</h1>
@@ -30,7 +30,7 @@ export function SignedOutPrompt({
                 'Choose subjects that shape your daily devotional.',
               ].map((line) => (
                 <li key={line} className="flex gap-2.5">
-                  <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--gold))]" />
+                  <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--accent))]" />
                   <span>{line}</span>
                 </li>
               ))}
@@ -51,7 +51,7 @@ export function SignedOutPrompt({
           </p>
         )}
 
-        <p className="mt-6 border-t border-white/12 pt-4 text-ui-sm muted">
+        <p className="mt-6 border-t border-edge/12 pt-4 text-ui-sm muted">
           Searching, reading, studying, browsing topics and following Related Scripture all work
           without an account, and always will.
         </p>

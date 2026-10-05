@@ -195,7 +195,7 @@ export default function VersePage() {
         {book ? (
           <Link
             to={`/bible/${book.id}/${reference.chapter}`}
-            className="glass-pill transition hover:border-white/45"
+            className="glass-pill transition hover:border-edge/45"
           >
             <Icon name="book" className="h-4 w-4" />
             Read {book.name} {reference.chapter}
@@ -325,7 +325,7 @@ function CommentaryUnavailable({
   return (
     <div className="glass p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <Icon name="info" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--gold))]" />
+        <Icon name="info" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--accent))]" />
         <div>
           <h2 className="display text-[1.25rem] leading-tight">
             {notConfigured

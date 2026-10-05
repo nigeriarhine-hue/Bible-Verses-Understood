@@ -67,9 +67,9 @@ export default function HistoryPage() {
               <Link
                 to={pathFor(entry.reference)}
                 state={{ source: 'history', resetTrail: true }}
-                className="glass flex items-center gap-4 p-4 transition hover:border-white/30"
+                className="glass flex items-center gap-4 p-4 transition hover:border-edge/30"
               >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-[rgb(var(--gold))]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-edge/10 text-[rgb(var(--accent))]">
                   <Icon name="clock" className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">

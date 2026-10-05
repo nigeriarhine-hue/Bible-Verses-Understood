@@ -50,7 +50,7 @@ export default function AboutPage() {
             'Stand in for a pastor, a counsellor, a therapist or a doctor.',
           ].map((line) => (
             <li key={line} className="flex gap-3">
-              <Icon name="shield" className="mt-1 h-4 w-4 shrink-0 text-[rgb(var(--gold))]" />
+              <Icon name="shield" className="mt-1 h-4 w-4 shrink-0 text-[rgb(var(--accent))]" />
               <span>{line}</span>
             </li>
           ))}
@@ -69,7 +69,7 @@ export default function AboutPage() {
         </h3>
         <ul className="mt-2.5 space-y-2.5">
           {available.map((entry) => (
-            <li key={entry.abbreviation} className="rounded-xl border border-white/12 bg-white/[0.05] p-3.5">
+            <li key={entry.abbreviation} className="rounded-xl border border-edge/12 bg-edge/[0.05] p-3.5">
               <p className="text-ui-base font-semibold">
                 {entry.name} <span className="muted">({entry.abbreviation})</span>
               </p>

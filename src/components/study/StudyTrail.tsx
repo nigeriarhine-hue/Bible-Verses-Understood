@@ -23,14 +23,14 @@ export function StudyTrail({ trail }: { trail: TrailStep[] }) {
               {isCurrent ? (
                 <span
                   aria-current="page"
-                  className="rounded-full bg-white/12 px-3 py-1.5 text-ui-xs font-semibold"
+                  className="rounded-full bg-edge/12 px-3 py-1.5 text-ui-xs font-semibold"
                 >
                   {step.reference}
                 </span>
               ) : (
                 <Link
                   to={step.path}
-                  className="rounded-full px-3 py-1.5 text-ui-xs font-medium muted transition hover:bg-white/10 hover:text-[rgb(var(--ink-on-dark))]"
+                  className="rounded-full px-3 py-1.5 text-ui-xs font-medium muted transition hover:bg-edge/10 hover:text-[rgb(var(--ink))]"
                 >
                   {step.reference}
                 </Link>

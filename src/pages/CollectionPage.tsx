@@ -65,7 +65,7 @@ export default function CollectionPage() {
 
   return (
     <div className="container-page space-y-4 pb-6">
-      <Link to="/saved" className="glass-pill transition hover:border-white/45">
+      <Link to="/saved" className="glass-pill transition hover:border-edge/45">
         <Icon name="arrow-left" className="h-4 w-4" />
         Saved
       </Link>
@@ -106,7 +106,7 @@ export default function CollectionPage() {
                 <Link
                   to={pathFor(verse.reference)}
                   state={{ source: 'saved', resetTrail: true }}
-                  className="display text-[1.0625rem] text-[rgb(var(--gold))] hover:underline"
+                  className="display text-[1.0625rem] text-[rgb(var(--accent))] hover:underline"
                 >
                   {verse.reference}
                 </Link>
@@ -118,14 +118,14 @@ export default function CollectionPage() {
                     setVerses((current) => current.filter((item) => item.id !== verse.id));
                     notify('Removed from this collection.');
                   }}
-                  className="-m-1 rounded-lg p-1 muted transition hover:text-[#ffb4a8]"
+                  className="-m-1 rounded-lg p-1 muted transition hover:text-[rgb(var(--danger))]"
                 >
                   <Icon name="close" className="h-4 w-4" />
                   <span className="sr-only">Remove {verse.reference} from this collection</span>
                 </button>
               </div>
               {verse.verse_text ? (
-                <p className="glass-light rounded-xl px-3.5 py-3 font-serif text-[0.97rem] leading-[1.65rem] text-[rgb(var(--ink-on-light))]">
+                <p className="glass-light rounded-xl px-3.5 py-3 font-serif text-[0.97rem] leading-[1.65rem] text-[rgb(var(--scripture-ink))]">
                   “{verse.verse_text.length > 200 ? `${verse.verse_text.slice(0, 198)}…` : verse.verse_text}”
                 </p>
               ) : null}

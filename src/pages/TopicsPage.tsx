@@ -61,14 +61,14 @@ export default function TopicsPage() {
               <Link
                 to={`/topics/${topic.slug}`}
                 onClick={() => trackEvent('topic_selected', { topic: topic.slug, from: 'topics_index' })}
-                className="glass group flex h-full flex-col gap-2 p-5 transition hover:border-white/30 hover:shadow-lift"
+                className="glass group flex h-full flex-col gap-2 p-5 transition hover:border-edge/30 hover:shadow-lift"
               >
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-[rgb(var(--gold))]">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-edge/10 text-[rgb(var(--accent))]">
                   <Icon name={topicIcon(topic.icon)} />
                 </span>
                 <span className="display text-[1.1875rem]">{topic.name}</span>
                 <span className="text-ui-sm leading-relaxed muted">{topic.description}</span>
-                <span className="mt-auto pt-2 text-ui-xs font-semibold text-[rgb(var(--gold))]">
+                <span className="mt-auto pt-2 text-ui-xs font-semibold text-[rgb(var(--accent))]">
                   {topic.verses.length} passages →
                 </span>
               </Link>

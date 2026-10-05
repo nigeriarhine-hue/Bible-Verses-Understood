@@ -70,33 +70,35 @@ const checks = [];
 
 for (const scene of scenes) {
   const { tokens } = scene;
-  const darkSurface = toRgb(tokens['glass-dark']);
-  const lightSurface = toRgb(tokens['glass-light']);
-  const darkAlpha = Number(tokens['glass-dark-alpha']);
-  const strongAlpha = Number(tokens['glass-dark-strong-alpha']);
-  const lightAlpha = Number(tokens['glass-light-alpha']);
+  const panel = toRgb(tokens.panel);
+  const scripture = toRgb(tokens['scripture-surface']);
+  const panelAlpha = Number(tokens['panel-alpha']);
+  const strongAlpha = Number(tokens['panel-strong-alpha']);
+  const scriptureAlpha = Number(tokens['scripture-surface-alpha']);
   const pillAlpha = 0.92; // .glass-pill
 
   for (const sky of skyColours(tokens)) {
     const surfaces = [
-      ['.glass', over(darkSurface, sky, darkAlpha), 'dark'],
-      ['.glass-strong', over(darkSurface, sky, strongAlpha), 'dark'],
-      ['.glass-pill', over(darkSurface, sky, pillAlpha), 'dark'],
-      ['.glass-light', over(lightSurface, sky, lightAlpha), 'light'],
+      ['.glass', over(panel, sky, panelAlpha), 'panel'],
+      ['.glass-strong', over(panel, sky, strongAlpha), 'panel'],
+      ['.glass-pill', over(panel, sky, pillAlpha), 'panel'],
+      ['.glass-light', over(scripture, sky, scriptureAlpha), 'scripture'],
     ];
 
     for (const [surfaceName, surface, kind] of surfaces) {
       const inks =
-        kind === 'dark'
+        kind === 'panel'
           ? [
-              ['body text', toRgb(tokens['ink-on-dark']), 4.5],
-              ['muted text', toRgb(tokens['ink-on-dark-muted']), 4.5],
-              ['gold accent', toRgb(tokens.gold), 4.5],
+              ['body text', toRgb(tokens.ink), 4.5],
+              ['muted text', toRgb(tokens['ink-muted']), 4.5],
+              ['accent text', toRgb(tokens.accent), 4.5],
+              ['error text', toRgb(tokens.danger), 4.5],
             ]
           : [
-              ['scripture text', toRgb(tokens['ink-on-light']), 4.5],
-              ['muted text', toRgb(tokens['ink-on-light-muted']), 4.5],
-              ['reference link', toRgb(tokens['gold-deep']), 4.5],
+              ['scripture text', toRgb(tokens['scripture-ink']), 4.5],
+              ['muted text', toRgb(tokens['scripture-ink-muted']), 4.5],
+              ['reference link', toRgb(tokens['accent-strong']), 4.5],
+              ['error text', toRgb(tokens.danger), 4.5],
             ];
 
       for (const [inkName, ink, target] of inks) {
@@ -112,8 +114,9 @@ for (const scene of scenes) {
   }
 }
 
-// Buttons paint their own opaque background, so they are checked directly.
-const gold = toRgb(base.gold);
+// Buttons paint their own opaque background with the bright accent — never the
+// text accent — so that is the one checked here.
+const gold = toRgb(base['accent-bright']);
 checks.push({
   scene: 'any',
   surface: '.btn-primary',

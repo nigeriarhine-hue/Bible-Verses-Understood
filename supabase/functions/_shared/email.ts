@@ -172,11 +172,14 @@ export async function sendBatch(messages: Message[]): Promise<SendResult[]> {
 /* The messages                                                               */
 /* -------------------------------------------------------------------------- */
 
-const NAVY = '#0c1b2e';
-const CARD = '#132741';
-const GOLD = '#e8b64c';
-const INK = '#f4f1ea';
-const MUTED = '#b9c6d6';
+const GROUND = '#f3e2c6';
+const CARD = '#fbf2e0';
+/** Paints a surface — a button. Never used as text. */
+const GOLD = '#f4be5e';
+/** The same accent as text, deep enough to read on these light surfaces. */
+const BRONZE = '#84480a';
+const INK = '#36220e';
+const MUTED = '#6a4c2e';
 
 function escapeHtml(value: string): string {
   return value
@@ -203,13 +206,13 @@ function shell(title: string, body: string, footer: string): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>${escapeHtml(title)}</title></head>
-<body style="margin:0;padding:0;background:${NAVY};">
+<body style="margin:0;padding:0;background:${GROUND};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(title)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${NAVY};padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${GROUND};padding:24px 12px;">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
   <tr><td style="padding:0 0 20px;text-align:center;">
-    <span style="font:600 18px/1.3 Georgia,'Times New Roman',serif;color:${GOLD};letter-spacing:.2px;">
+    <span style="font:600 18px/1.3 Georgia,'Times New Roman',serif;color:${BRONZE};letter-spacing:.2px;">
       Bible Verses Understood
     </span><br>
     <span style="font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${MUTED};">
@@ -245,7 +248,7 @@ export interface DailyEmailContent {
 export function dailyEmailHtml(content: DailyEmailContent): string {
   const body =
     card(`
-      <p style="margin:0 0 6px;font:600 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:${GOLD};">
+      <p style="margin:0 0 6px;font:600 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:${BRONZE};">
         Verse of the Day
       </p>
       <p style="margin:0 0 12px;font:600 20px/1.3 Georgia,'Times New Roman',serif;color:${INK};">

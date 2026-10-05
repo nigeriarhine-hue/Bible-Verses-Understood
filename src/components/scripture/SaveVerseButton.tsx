@@ -148,7 +148,7 @@ export function SaveVerseButton({ passage, tone = 'light' }: { passage: Passage;
               'Everything else on this site stays free and open without an account.',
             ].map((line) => (
               <li key={line} className="flex gap-2.5">
-                <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--gold))]" />
+                <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--accent))]" />
                 <span>{line}</span>
               </li>
             ))}
@@ -267,13 +267,13 @@ function CollectionsModal({
                       onClick={() => void toggle(collection.id)}
                       className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
                         member
-                          ? 'border-[rgb(var(--gold))]/60 bg-[rgb(var(--gold))]/12'
-                          : 'border-white/12 hover:bg-white/10'
+                          ? 'border-[rgb(var(--accent-bright))]/60 bg-[rgb(var(--accent-bright))]/12'
+                          : 'border-edge/12 hover:bg-edge/10'
                       }`}
                     >
                       <span
                         className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
-                          member ? 'border-[rgb(var(--gold))] bg-[rgb(var(--gold))] text-[#241701]' : 'border-white/30'
+                          member ? 'border-[rgb(var(--accent-bright))] bg-[rgb(var(--accent-bright))] text-[#241701]' : 'border-edge/30'
                         }`}
                       >
                         {member ? <Icon name="check" className="h-3.5 w-3.5" /> : null}

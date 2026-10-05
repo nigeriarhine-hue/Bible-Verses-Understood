@@ -12,18 +12,18 @@ export function Footer() {
       <div className="glass mt-4 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-ui-xs">
           <span className="muted">© {new Date().getFullYear()} Bible Verses Understood</span>
-          <Link to="/about" className="underline underline-offset-4 hover:text-[rgb(var(--gold))]">
+          <Link to="/about" className="underline underline-offset-4 hover:text-[rgb(var(--accent))]">
             About
           </Link>
-          <Link to="/topics" className="underline underline-offset-4 hover:text-[rgb(var(--gold))]">
+          <Link to="/topics" className="underline underline-offset-4 hover:text-[rgb(var(--accent))]">
             Topics
           </Link>
-          <Link to="/bible" className="underline underline-offset-4 hover:text-[rgb(var(--gold))]">
+          <Link to="/bible" className="underline underline-offset-4 hover:text-[rgb(var(--accent))]">
             Browse the Bible
           </Link>
         </div>
         {translationInfo?.copyrightNotice ? (
-          <p className="mt-3 border-t border-white/10 pt-3 text-ui-xs leading-relaxed muted">
+          <p className="mt-3 border-t border-edge/10 pt-3 text-ui-xs leading-relaxed muted">
             {translationInfo.copyrightNotice}
           </p>
         ) : null}

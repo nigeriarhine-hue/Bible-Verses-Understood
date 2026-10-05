@@ -96,15 +96,15 @@ export function RelatedScriptureCards({
               });
               onNavigate?.(reference.reference);
             }}
-            className="glass group flex h-full flex-col gap-2.5 p-4 transition hover:border-white/35 hover:shadow-lift focus-visible:border-white/45"
+            className="glass group flex h-full flex-col gap-2.5 p-4 transition hover:border-edge/35 hover:shadow-lift focus-visible:border-edge/45"
           >
-            <span className="display text-[1.0625rem] text-[rgb(var(--gold))]">
+            <span className="display text-[1.0625rem] text-[rgb(var(--accent))]">
               {reference.reference}
             </span>
 
             {preview ? (
               <span className="glass-light block rounded-xl px-3 py-2.5">
-                <span className="block font-serif text-[0.95rem] leading-[1.6rem] text-[rgb(var(--ink-on-light))]">
+                <span className="block font-serif text-[0.95rem] leading-[1.6rem] text-[rgb(var(--scripture-ink))]">
                   “{shorten(preview, 150)}”
                 </span>
               </span>
@@ -112,7 +112,7 @@ export function RelatedScriptureCards({
 
             <span className="text-ui-sm leading-relaxed muted">{suggestion.relevanceExplanation}</span>
 
-            <span className="mt-auto inline-flex items-center gap-1.5 pt-1 text-ui-sm font-semibold text-[rgb(var(--gold))]">
+            <span className="mt-auto inline-flex items-center gap-1.5 pt-1 text-ui-sm font-semibold text-[rgb(var(--accent))]">
               Understand This Verse
               <Icon name="arrow-right" className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </span>

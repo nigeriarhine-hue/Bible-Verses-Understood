@@ -172,7 +172,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-white/12 pt-5">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-edge/12 pt-5">
             <Link to="/saved" className="btn btn-secondary">
               <Icon name="bookmark" className="h-4 w-4" />
               Saved
@@ -216,7 +216,7 @@ function Toggle({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`mt-0.5 h-7 w-12 shrink-0 rounded-full border transition ${
-          checked ? 'border-[rgb(var(--gold))] bg-[rgb(var(--gold))]' : 'border-white/25 bg-white/10'
+          checked ? 'border-[rgb(var(--accent-bright))] bg-[rgb(var(--accent-bright))]' : 'border-edge/25 bg-edge/10'
         }`}
       >
         <span

@@ -25,7 +25,7 @@ export function ScriptureCard({
     <article className="glass-light overflow-hidden" aria-labelledby={headingId}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgb(12_27_46/0.1)] px-5 py-3.5 sm:px-6">
         <div className="min-w-0">
-          <h1 id={headingId} className="display text-[1.35rem] leading-tight text-[rgb(var(--ink-on-light))] sm:text-[1.6rem]">
+          <h1 id={headingId} className="display text-[1.35rem] leading-tight text-[rgb(var(--scripture-ink))] sm:text-[1.6rem]">
             {passage.reference.reference}
           </h1>
           <p className="mt-0.5 text-ui-xs font-medium muted-on-light">
@@ -40,7 +40,7 @@ export function ScriptureCard({
           {passage.verses.map((verse, index) => (
             <span key={`${verse.chapter}:${verse.verse}`}>
               {showVerseNumbers && multiVerse ? (
-                <sup className="mr-1 align-super text-[0.7em] font-semibold text-[rgb(var(--gold-deep))]">
+                <sup className="mr-1 align-super text-[0.7em] font-semibold text-[rgb(var(--accent-strong))]">
                   {verse.verse}
                 </sup>
               ) : null}
@@ -52,7 +52,7 @@ export function ScriptureCard({
       </div>
 
       <div className="flex items-start gap-2 border-t border-[rgb(12_27_46/0.1)] px-5 py-3 sm:px-6">
-        <Icon name="book" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--ink-on-light-muted))]" />
+        <Icon name="book" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--scripture-ink-muted))]" />
         <p className="text-ui-xs leading-relaxed muted-on-light">
           Scripture text retrieved from the {passage.translationName}.
           {passage.copyright ? ` ${passage.copyright}` : ''}

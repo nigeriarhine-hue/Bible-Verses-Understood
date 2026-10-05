@@ -74,7 +74,7 @@ export default function SignInPage() {
     return (
       <div className="container-page py-10">
         <div className="glass mx-auto max-w-lg p-6 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[rgb(var(--gold))]">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-edge/10 text-[rgb(var(--accent))]">
             <Icon name="check" className="h-6 w-6" />
           </span>
           <h1 className="display mt-4 text-2xl">Check your email</h1>
@@ -160,7 +160,7 @@ export default function SignInPage() {
             {error ? (
               <p
                 role="alert"
-                className="rounded-xl border border-[#ff9c8b]/40 bg-[#ff9c8b]/10 px-4 py-3 text-ui-sm"
+                className="rounded-xl border border-[rgb(var(--danger))]/35 bg-[rgb(var(--danger))]/10 px-4 py-3 text-ui-sm"
               >
                 {error}
               </p>
@@ -175,9 +175,9 @@ export default function SignInPage() {
           {mode !== 'reset' ? (
             <>
               <div className="my-5 flex items-center gap-3">
-                <span className="h-px flex-1 bg-white/15" />
+                <span className="h-px flex-1 bg-edge/15" />
                 <span className="text-ui-xs muted">or</span>
-                <span className="h-px flex-1 bg-white/15" />
+                <span className="h-px flex-1 bg-edge/15" />
               </div>
               <button
                 type="button"
@@ -204,7 +204,7 @@ export default function SignInPage() {
               <button
                 type="button"
                 onClick={() => setMode('signin')}
-                className="font-semibold text-[rgb(var(--gold))] underline underline-offset-4"
+                className="font-semibold text-[rgb(var(--accent))] underline underline-offset-4"
               >
                 Sign in
               </button>
@@ -216,7 +216,7 @@ export default function SignInPage() {
                 <button
                   type="button"
                   onClick={() => setMode('signup')}
-                  className="font-semibold text-[rgb(var(--gold))] underline underline-offset-4"
+                  className="font-semibold text-[rgb(var(--accent))] underline underline-offset-4"
                 >
                   Create a free account
                 </button>
@@ -236,7 +236,7 @@ export default function SignInPage() {
               <button
                 type="button"
                 onClick={() => setMode('signin')}
-                className="font-semibold text-[rgb(var(--gold))] underline underline-offset-4"
+                className="font-semibold text-[rgb(var(--accent))] underline underline-offset-4"
               >
                 Back to sign in
               </button>

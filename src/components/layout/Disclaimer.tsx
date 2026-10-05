@@ -10,7 +10,7 @@ export function Disclaimer({ compact = false }: { compact?: boolean }) {
       className={`glass px-4 py-3.5 sm:px-5 ${compact ? '' : 'sm:py-4'}`}
       aria-label="About the explanations on this site"
     >
-      <p className="text-ui-xs leading-[1.6] text-[rgb(var(--ink-on-dark))]">
+      <p className="text-ui-xs leading-[1.6] text-[rgb(var(--ink))]">
         <span className="font-semibold">Bible Verses Understood</span> uses AI to support Scripture
         study, reflection, and understanding. AI-generated explanations may contain errors and may
         reflect interpretations that differ across Christian traditions. Commentary is not Scripture

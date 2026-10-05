@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
             />
           </div>
           {error ? (
-            <p role="alert" className="rounded-xl border border-[#ff9c8b]/40 bg-[#ff9c8b]/10 px-4 py-3 text-ui-sm">
+            <p role="alert" className="rounded-xl border border-[rgb(var(--danger))]/35 bg-[rgb(var(--danger))]/10 px-4 py-3 text-ui-sm">
               {error}
             </p>
           ) : null}

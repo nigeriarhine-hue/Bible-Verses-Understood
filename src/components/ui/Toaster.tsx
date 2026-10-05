@@ -19,14 +19,14 @@ export function Toaster() {
           <Icon
             name={toast.tone === 'error' ? 'info' : toast.tone === 'success' ? 'check' : 'sparkle'}
             className={`mt-0.5 h-5 w-5 shrink-0 ${
-              toast.tone === 'error' ? 'text-[#ffb4a8]' : 'text-[rgb(var(--gold))]'
+              toast.tone === 'error' ? 'text-[rgb(var(--danger))]' : 'text-[rgb(var(--accent))]'
             }`}
           />
           <p className="flex-1 text-ui-sm leading-snug">{toast.message}</p>
           <button
             type="button"
             onClick={() => dismiss(toast.id)}
-            className="-m-1 rounded-lg p-1 muted transition hover:text-[rgb(var(--ink-on-dark))]"
+            className="-m-1 rounded-lg p-1 muted transition hover:text-[rgb(var(--ink))]"
           >
             <Icon name="close" className="h-4 w-4" />
             <span className="sr-only">Dismiss</span>

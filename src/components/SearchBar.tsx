@@ -71,7 +71,7 @@ export function SearchBar({
       <div className="relative">
         <Icon
           name="search"
-          className={`pointer-events-none absolute left-4 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-[rgb(var(--ink-on-dark-muted))] xs:block ${
+          className={`pointer-events-none absolute left-4 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-[rgb(var(--ink-muted))] xs:block ${
             large ? 'sm:left-5' : ''
           }`}
         />

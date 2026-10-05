@@ -56,7 +56,7 @@ export default function ChapterPage() {
   return (
     <div className="container-page space-y-4 pb-6">
       <div className="flex flex-wrap items-center gap-2">
-        <Link to="/bible" className="glass-pill transition hover:border-white/45">
+        <Link to="/bible" className="glass-pill transition hover:border-edge/45">
           <Icon name="arrow-left" className="h-4 w-4" />
           All books
         </Link>
@@ -65,7 +65,7 @@ export default function ChapterPage() {
       <article className="glass-light overflow-hidden">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgb(12_27_46/0.1)] px-5 py-4 sm:px-6">
           <div>
-            <h1 className="display text-[1.5rem] leading-tight text-[rgb(var(--ink-on-light))] sm:text-[1.85rem]">
+            <h1 className="display text-[1.5rem] leading-tight text-[rgb(var(--scripture-ink))] sm:text-[1.85rem]">
               {book.name} {chapterNumber}
             </h1>
             <p className="mt-0.5 text-ui-xs font-medium muted-on-light">
@@ -99,7 +99,7 @@ export default function ChapterPage() {
                   <Link
                     to={`/verse/${book.id}/${chapterNumber}/${verse.verse}`}
                     state={{ source: 'browse', resetTrail: true }}
-                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[rgb(12_27_46/0.14)] text-ui-xs font-semibold text-[rgb(var(--gold-deep))] transition hover:border-[rgb(var(--gold-deep))] hover:bg-[rgb(var(--gold-deep))]/10"
+                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[rgb(12_27_46/0.14)] text-ui-xs font-semibold text-[rgb(var(--accent-strong))] transition hover:border-[rgb(var(--accent-strong))] hover:bg-[rgb(var(--accent-strong))]/10"
                     aria-label={`Understand ${book.name} ${chapterNumber}:${verse.verse}`}
                   >
                     {verse.verse}
@@ -112,7 +112,7 @@ export default function ChapterPage() {
                     state={{ source: 'browse', resetTrail: true }}
                     tabIndex={-1}
                     aria-hidden="true"
-                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[rgb(var(--gold-deep))] opacity-0 transition hover:bg-[rgb(var(--gold-deep))]/10 group-hover:opacity-100"
+                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[rgb(var(--accent-strong))] opacity-0 transition hover:bg-[rgb(var(--accent-strong))]/10 group-hover:opacity-100"
                   >
                     <Icon name="arrow-right" className="h-4 w-4" />
                   </Link>

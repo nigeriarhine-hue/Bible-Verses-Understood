@@ -26,6 +26,9 @@ export default {
         'scripture-lg': ['1.375rem', { lineHeight: '2.25rem' }], // 22px desktop
       },
       colors: {
+        // Theme-aware hairlines and hover washes. These used to be hard-coded
+        // white/N, which is invisible the moment the surfaces are light.
+        edge: 'rgb(var(--edge) / <alpha-value>)',
         sky: {
           50: '#f0f8ff',
           100: '#dceeff',
@@ -60,9 +63,11 @@ export default {
       },
       backdropBlur: { xs: '2px' },
       boxShadow: {
-        glass: '0 10px 40px -12px rgba(6, 22, 48, 0.55), inset 0 1px 0 0 rgba(255,255,255,0.10)',
-        'glass-light': '0 10px 32px -14px rgba(6, 22, 48, 0.35), inset 0 1px 0 0 rgba(255,255,255,0.75)',
-        lift: '0 18px 50px -20px rgba(4, 16, 38, 0.65)',
+        // Warm, soft shadows: a light surface needs a tint of the ground it
+        // sits on, not the heavy navy drop a dark theme wanted.
+        glass: '0 10px 32px -14px rgba(92, 56, 18, 0.26), inset 0 1px 0 0 rgba(255,255,255,0.55)',
+        'glass-light': '0 10px 28px -16px rgba(92, 56, 18, 0.20), inset 0 1px 0 0 rgba(255,255,255,0.9)',
+        lift: '0 16px 40px -20px rgba(92, 56, 18, 0.34)',
       },
       borderRadius: { xl2: '1.25rem', '3xl': '1.75rem' },
       keyframes: {

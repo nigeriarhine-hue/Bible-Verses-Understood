@@ -10,11 +10,25 @@ import { Icon } from '../ui/Icon';
 import { Modal } from '../ui/Modal';
 
 const BACKGROUNDS = [
-  { id: 'sunrise', label: 'Sunrise', from: '#1b3f77', via: '#5d8fc8', to: '#ffd6a0' },
-  { id: 'day', label: 'Daylight', from: '#0f4a94', via: '#3d8fd8', to: '#c4e2f6' },
-  { id: 'golden', label: 'Golden hour', from: '#16305a', via: '#4f7fb5', to: '#f5c07a' },
-  { id: 'night', label: 'Night sky', from: '#050f26', via: '#132c53', to: '#2f5379' },
+  { id: 'sunrise', label: 'Sunrise', from: '#c9762e', via: '#edb06a', to: '#fff3e2' },
+  { id: 'day', label: 'Daylight', from: '#e09a44', via: '#f2c47d', to: '#fff8ec' },
+  { id: 'golden', label: 'Golden hour', from: '#b5641f', via: '#eaa65e', to: '#ffeccf' },
+  { id: 'night', label: 'Dusk', from: '#8c5225', via: '#c08a4e', to: '#f3dcb8' },
 ] as const;
+
+/**
+ * The card's own colours.
+ *
+ * Shared by the preview in the modal and by the canvas that produces the image
+ * people actually post, so the two cannot drift apart again.
+ */
+const CARD = {
+  panel: 'rgba(252, 243, 226, 0.92)',
+  ink: '#36220E',
+  reference: '#84480A',
+  wordmark: 'rgba(96, 70, 44, 0.85)',
+  glow: '255, 226, 165',
+} as const;
 
 /**
  * Share a verse: copy the text, use the system share sheet, or download a
@@ -122,11 +136,17 @@ export function ShareButton({ passage, tone = 'light' }: { passage: Passage; ton
             } 55%, ${BACKGROUNDS.find((b) => b.id === background)!.to} 100%)`,
           }}
         >
-          <div className="rounded-xl bg-[rgb(9_22_44/0.72)] p-4 backdrop-blur-md">
-            <p className="font-serif text-[1.0625rem] leading-[1.7rem] text-white">
+          <div
+            className="rounded-xl p-4 backdrop-blur-md"
+            style={{ backgroundColor: CARD.panel }}
+          >
+            <p
+              className="font-serif text-[1.0625rem] leading-[1.7rem]"
+              style={{ color: CARD.ink }}
+            >
               “{passage.text.length > 260 ? `${passage.text.slice(0, 258)}…` : passage.text}”
             </p>
-            <p className="mt-3 text-ui-xs font-semibold text-[rgb(var(--gold))]">
+            <p className="mt-3 text-ui-xs font-semibold" style={{ color: CARD.reference }}>
               {passage.reference.reference} · {passage.translation}
             </p>
           </div>
@@ -191,20 +211,20 @@ function drawCard(
 
   // Soft light from one corner, matching the app's sky.
   const glow = context.createRadialGradient(size * 0.78, size * 0.82, 0, size * 0.78, size * 0.82, size * 0.7);
-  glow.addColorStop(0, 'rgba(255, 226, 165, 0.4)');
-  glow.addColorStop(1, 'rgba(255, 226, 165, 0)');
+  glow.addColorStop(0, `rgba(${CARD.glow}, 0.4)`);
+  glow.addColorStop(1, `rgba(${CARD.glow}, 0)`);
   context.fillStyle = glow;
   context.fillRect(0, 0, size, size);
 
   // The panel the words sit on, so they are always readable.
   const margin = 88;
   const panelWidth = size - margin * 2;
-  context.fillStyle = 'rgba(9, 22, 44, 0.74)';
+  context.fillStyle = CARD.panel;
   roundedRect(context, margin, margin, panelWidth, size - margin * 2, 44);
   context.fill();
 
   const text = passage.text.length > 420 ? `${passage.text.slice(0, 418)}…` : passage.text;
-  context.fillStyle = '#F4F8FF';
+  context.fillStyle = CARD.ink;
   context.textBaseline = 'top';
   const fontSize = text.length > 260 ? 40 : text.length > 150 ? 46 : 54;
   context.font = `500 ${fontSize}px Lora, Georgia, serif`;
@@ -219,11 +239,11 @@ function drawCard(
   }
 
   context.font = '600 34px Inter, system-ui, sans-serif';
-  context.fillStyle = '#F4C65C';
+  context.fillStyle = CARD.reference;
   context.fillText(`${passage.reference.reference} · ${passage.translation}`, margin + 56, y + 34);
 
   context.font = '500 26px Inter, system-ui, sans-serif';
-  context.fillStyle = 'rgba(232, 240, 255, 0.75)';
+  context.fillStyle = CARD.wordmark;
   context.fillText('Bible Verses Understood', margin + 56, size - margin - 58);
 }
 

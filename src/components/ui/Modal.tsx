@@ -79,7 +79,7 @@ export function Modal({ open, onClose, title, description, children, footer }: M
           <button
             type="button"
             onClick={onClose}
-            className="-m-1.5 rounded-xl p-1.5 muted transition hover:bg-white/10 hover:text-[rgb(var(--ink-on-dark))]"
+            className="-m-1.5 rounded-xl p-1.5 muted transition hover:bg-edge/10 hover:text-[rgb(var(--ink))]"
           >
             <Icon name="close" />
             <span className="sr-only">Close</span>

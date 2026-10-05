@@ -5,97 +5,107 @@
 /* ==========================================================================
    Bible Verses Understood — design tokens
 
-   The background is a changing sky, so no text ever sits directly on it.
+   The background is a changing amber sky, so no text ever sits directly on it.
    Everything readable sits on one of two surfaces:
 
-     .glass        deep translucent navy  → light ink   (interface, commentary)
-     .glass-light  luminous near-white    → dark ink    (Scripture)
+     .glass        warm parchment    → dark ink   (interface, commentary)
+     .glass-light  brighter cream    → dark ink   (Scripture)
+
+   The two still read as different surfaces; the Scripture card is the brighter
+   of them, which is the point — Scripture is not commentary.
 
    Both are opaque enough that the sky behind them cannot pull the contrast
    below WCAG AA. scripts/audit-contrast.mjs checks this for every token pair
    against every sky the app can render.
+
+   One rule worth knowing before editing: --accent is a deep bronze meant for
+   TEXT on these light surfaces. --accent-bright is the gold that PAINTS a
+   surface (a button, a focus ring) and is never used as text. Swapping them
+   produces something that looks fine and fails contrast.
    ========================================================================== */
 
 :root {
   /* Surfaces */
-  --glass-dark: 11 28 54;
-  --glass-dark-alpha: 0.78;
-  --glass-dark-strong-alpha: 0.9;
-  --glass-light: 255 253 248;
-  --glass-light-alpha: 0.95;
+  --panel: 246 233 211;
+  --panel-alpha: 0.92;
+  --panel-strong-alpha: 0.96;
+  --scripture-surface: 255 251 243;
+  --scripture-surface-alpha: 0.97;
 
   /* Ink */
-  --ink-on-dark: 240 246 255;
-  --ink-on-dark-muted: 189 206 230;
-  --ink-on-light: 12 27 46;
-  --ink-on-light-muted: 60 78 104;
+  --ink: 54 34 16;
+  --ink-muted: 106 76 46;
+  --scripture-ink: 44 28 14;
+  --scripture-ink-muted: 96 70 44;
 
   /* Accents */
-  --gold: 244 198 92;
-  --gold-deep: 125 79 0;
-  --edge: 255 255 255;
-  --edge-alpha: 0.18;
+  --accent: 132 72 6;
+  --accent-strong: 124 66 4;
+  --accent-bright: 244 190 94;
+  --danger: 158 42 28;
+  --edge: 124 84 40;
+  --edge-alpha: 0.22;
 
   /* Sky — overridden per scene below */
-  --sky-top: #1b4f95;
-  --sky-mid: #6aa6de;
-  --sky-low: #cbe4f6;
-  --sky-horizon: #ffdcae;
+  --sky-top: #d4833a;
+  --sky-mid: #edb06a;
+  --sky-low: #f9dcae;
+  --sky-horizon: #fff3e2;
   --sun-x: 78%;
   --sun-y: 82%;
-  --sun-color: 255 226 165;
+  --sun-color: 255 236 194;
   --star-opacity: 0;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
-/* Sunrise — soft blue climbing out of a warm horizon. */
+/* Sunrise — the first warmth over the horizon. */
 [data-scene='sunrise'] {
-  --sky-top: #1b4f95;
-  --sky-mid: #6aa6de;
-  --sky-low: #cbe4f6;
-  --sky-horizon: #ffdcae;
+  --sky-top: #d4833a;
+  --sky-mid: #edb06a;
+  --sky-low: #f9dcae;
+  --sky-horizon: #fff3e2;
   --sun-x: 22%;
   --sun-y: 84%;
-  --sun-color: 255 219 158;
+  --sun-color: 255 232 186;
   --star-opacity: 0;
 }
 
-/* Bright day — the brightest sky the app paints. */
+/* Bright day — the lightest sky the app paints. */
 [data-scene='day'] {
-  --sky-top: #1160bd;
-  --sky-mid: #55a5e6;
-  --sky-low: #bde2f9;
-  --sky-horizon: #eff8fe;
+  --sky-top: #e09a44;
+  --sky-mid: #f2c47d;
+  --sky-low: #fbe6c2;
+  --sky-horizon: #fff8ec;
   --sun-x: 82%;
   --sun-y: 16%;
-  --sun-color: 255 250 226;
+  --sun-color: 255 244 214;
   --star-opacity: 0;
 }
 
-/* Golden hour. */
+/* Golden hour — the deepest amber before dusk. */
 [data-scene='golden'] {
-  --sky-top: #1a4478;
-  --sky-mid: #6396cd;
-  --sky-low: #f2c78e;
-  --sky-horizon: #ffdcaa;
+  --sky-top: #c9762e;
+  --sky-mid: #eaa65e;
+  --sky-low: #f7d6a0;
+  --sky-horizon: #ffeccf;
   --sun-x: 76%;
   --sun-y: 86%;
-  --sun-color: 255 214 148;
+  --sun-color: 255 222 164;
   --star-opacity: 0;
 }
 
-/* Deep blue night with a scatter of stars. */
+/* Dusk — dustier and lower, but still a light sky. Stars would not
+   read against it, so there are none. */
 [data-scene='night'] {
-  --sky-top: #030b1c;
-  --sky-mid: #0b2144;
-  --sky-low: #16375f;
-  --sky-horizon: #2b4d76;
+  --sky-top: #9c5f2c;
+  --sky-mid: #c08a4e;
+  --sky-low: #e0bb8c;
+  --sky-horizon: #f3dcb8;
   --sun-x: 20%;
   --sun-y: 90%;
-  --sun-color: 150 185 235;
-  --star-opacity: 1;
-  --glass-dark-alpha: 0.72;
+  --sun-color: 246 216 166;
+  --star-opacity: 0;
 }
 
 @layer base {
@@ -120,8 +130,8 @@
   body {
     @apply font-sans antialiased;
     /* A solid floor under the sky so no text can ever fall on bare white. */
-    background-color: #0a2144;
-    color: rgb(var(--ink-on-dark));
+    background-color: #f6e6cc;
+    color: rgb(var(--ink));
     font-size: 1rem;
     line-height: 1.6;
     min-height: 100svh;
@@ -134,14 +144,14 @@
   }
 
   :focus-visible {
-    outline: 3px solid rgb(var(--gold));
+    outline: 3px solid rgb(var(--accent-strong));
     outline-offset: 2px;
     border-radius: 0.5rem;
   }
 
   ::selection {
-    background: rgb(var(--gold) / 0.35);
-    color: rgb(var(--ink-on-dark));
+    background: rgb(var(--accent-bright) / 0.55);
+    color: rgb(var(--ink));
   }
 
   /* Scrollbars that suit the sky rather than fighting it. */
@@ -157,27 +167,27 @@
   /* ---------------------------------------------------------------------- */
 
   .glass {
-    background-color: rgb(var(--glass-dark) / var(--glass-dark-alpha));
+    background-color: rgb(var(--panel) / var(--panel-alpha));
     border: 1px solid rgb(var(--edge) / var(--edge-alpha));
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     backdrop-filter: blur(18px) saturate(140%);
     @apply rounded-2xl shadow-glass;
   }
 
   .glass-strong {
-    background-color: rgb(var(--glass-dark) / var(--glass-dark-strong-alpha));
+    background-color: rgb(var(--panel) / var(--panel-strong-alpha));
     border: 1px solid rgb(var(--edge) / 0.22);
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
     -webkit-backdrop-filter: blur(22px) saturate(150%);
     backdrop-filter: blur(22px) saturate(150%);
     @apply rounded-2xl shadow-glass;
   }
 
   .glass-light {
-    background-color: rgb(var(--glass-light) / var(--glass-light-alpha));
-    border: 1px solid rgb(255 255 255 / 0.75);
-    color: rgb(var(--ink-on-light));
+    background-color: rgb(var(--scripture-surface) / var(--scripture-surface-alpha));
+    border: 1px solid rgb(var(--edge) / 0.14);
+    color: rgb(var(--scripture-ink));
     -webkit-backdrop-filter: blur(16px) saturate(120%);
     backdrop-filter: blur(16px) saturate(120%);
     @apply rounded-2xl shadow-glass-light;
@@ -186,20 +196,20 @@
   /* A high-contrast pill for controls that float over the sky — the Back to
      previous verse control above all. Never let this become low-contrast. */
   .glass-pill {
-    background-color: rgb(var(--glass-dark) / 0.92);
+    background-color: rgb(var(--panel) / 0.92);
     border: 1px solid rgb(var(--edge) / 0.3);
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     backdrop-filter: blur(20px) saturate(150%);
     @apply inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-ui-sm font-medium shadow-lift;
   }
 
   .muted {
-    color: rgb(var(--ink-on-dark-muted));
+    color: rgb(var(--ink-muted));
   }
 
   .muted-on-light {
-    color: rgb(var(--ink-on-light-muted));
+    color: rgb(var(--scripture-ink-muted));
   }
 
   /* ---------------------------------------------------------------------- */
@@ -212,7 +222,7 @@
   }
 
   .btn-primary {
-    background-image: linear-gradient(135deg, rgb(var(--gold)) 0%, #e8a93a 100%);
+    background-image: linear-gradient(135deg, rgb(var(--accent-bright)) 0%, #e8a93a 100%);
     color: #241701;
     @apply shadow-lift;
   }
@@ -221,19 +231,19 @@
   }
 
   .btn-secondary {
-    background-color: rgb(var(--glass-dark) / 0.86);
+    background-color: rgb(var(--panel) / 0.86);
     border: 1px solid rgb(var(--edge) / 0.28);
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
   }
   .btn-secondary:hover {
-    background-color: rgb(var(--glass-dark) / 0.95);
+    background-color: rgb(var(--panel) / 0.95);
     border-color: rgb(var(--edge) / 0.45);
   }
 
   .btn-ghost {
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
     border: 1px solid transparent;
   }
   .btn-ghost:hover {
@@ -244,7 +254,7 @@
   .btn-on-light {
     background-color: rgb(12 27 46 / 0.06);
     border: 1px solid rgb(12 27 46 / 0.16);
-    color: rgb(var(--ink-on-light));
+    color: rgb(var(--scripture-ink));
   }
   .btn-on-light:hover {
     background-color: rgb(12 27 46 / 0.11);
@@ -256,7 +266,7 @@
 
   .scripture {
     @apply font-serif text-scripture-sm sm:text-scripture-md lg:text-scripture-lg;
-    color: rgb(var(--ink-on-light));
+    color: rgb(var(--scripture-ink));
     letter-spacing: 0.003em;
   }
 
@@ -268,7 +278,7 @@
   /* Explanation prose: 17-18px, comfortable line height, never faint. */
   .prose-study {
     @apply text-prose-base sm:text-prose-lg;
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
   }
   .prose-study p + p {
     @apply mt-4;
@@ -276,7 +286,7 @@
 
   .eyebrow {
     @apply text-ui-xs font-semibold uppercase tracking-[0.14em];
-    color: rgb(var(--gold));
+    color: rgb(var(--accent));
   }
 
   /* ---------------------------------------------------------------------- */
@@ -285,22 +295,22 @@
 
   .ref-link {
     @apply rounded px-1 font-medium transition;
-    color: rgb(var(--gold));
+    color: rgb(var(--accent));
     text-decoration: underline;
-    text-decoration-color: rgb(var(--gold) / 0.5);
+    text-decoration-color: rgb(var(--accent) / 0.5);
     text-underline-offset: 3px;
   }
   .ref-link:hover {
-    background-color: rgb(var(--gold) / 0.16);
-    text-decoration-color: rgb(var(--gold));
+    background-color: rgb(var(--accent) / 0.16);
+    text-decoration-color: rgb(var(--accent));
   }
 
   .ref-link-on-light {
-    color: rgb(var(--gold-deep));
-    text-decoration-color: rgb(var(--gold-deep) / 0.5);
+    color: rgb(var(--accent-strong));
+    text-decoration-color: rgb(var(--accent-strong) / 0.5);
   }
   .ref-link-on-light:hover {
-    background-color: rgb(var(--gold-deep) / 0.12);
+    background-color: rgb(var(--accent-strong) / 0.12);
   }
 
   /* ---------------------------------------------------------------------- */
@@ -309,17 +319,17 @@
 
   .field {
     @apply w-full rounded-2xl px-4 py-3 text-ui-base;
-    background-color: rgb(var(--glass-dark) / 0.86);
+    background-color: rgb(var(--panel) / 0.86);
     border: 1px solid rgb(var(--edge) / 0.26);
-    color: rgb(var(--ink-on-dark));
+    color: rgb(var(--ink));
   }
   .field::placeholder {
-    color: rgb(var(--ink-on-dark-muted) / 0.85);
+    color: rgb(var(--ink-muted) / 0.85);
   }
   .field:focus {
-    border-color: rgb(var(--gold) / 0.7);
+    border-color: rgb(var(--accent) / 0.7);
     outline: none;
-    box-shadow: 0 0 0 3px rgb(var(--gold) / 0.28);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.28);
   }
 
   .skeleton {

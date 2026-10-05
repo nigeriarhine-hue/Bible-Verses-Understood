@@ -53,11 +53,11 @@ export function StudyView({
           </h3>
           <dl className="mt-4 space-y-4">
             {study.keyTerms.map((term) => (
-              <div key={term.term} className="rounded-xl border border-white/12 bg-white/[0.05] p-4">
+              <div key={term.term} className="rounded-xl border border-edge/12 bg-edge/[0.05] p-4">
                 <dt className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                   <span className="text-ui-base font-semibold">{term.term}</span>
                   {term.original ? (
-                    <span className="font-serif text-[1.15rem] text-[rgb(var(--gold))]">
+                    <span className="font-serif text-[1.15rem] text-[rgb(var(--accent))]">
                       {term.original}
                     </span>
                   ) : null}
@@ -65,7 +65,7 @@ export function StudyView({
                     <span className="text-ui-sm italic muted">{term.transliteration}</span>
                   ) : null}
                   {term.language ? (
-                    <span className="rounded-full border border-white/15 px-2 py-0.5 text-ui-xs muted">
+                    <span className="rounded-full border border-edge/15 px-2 py-0.5 text-ui-xs muted">
                       {term.language}
                     </span>
                   ) : null}
@@ -90,7 +90,7 @@ export function StudyView({
           </p>
           <ul className="mt-4 space-y-3">
             {study.interpretations.map((entry) => (
-              <li key={entry.position} className="rounded-xl border border-white/12 bg-white/[0.05] p-4">
+              <li key={entry.position} className="rounded-xl border border-edge/12 bg-edge/[0.05] p-4">
                 <p className="text-ui-base font-semibold">{entry.position}</p>
                 {entry.heldBy ? <p className="mt-0.5 text-ui-xs muted">Held by: {entry.heldBy}</p> : null}
                 <LinkedProse text={entry.summary} className="prose-study mt-2" />
@@ -106,7 +106,7 @@ export function StudyView({
           <ul className="mt-3 space-y-2.5">
             {study.reflectionQuestions.map((question) => (
               <li key={question} className="flex gap-3 text-prose-base">
-                <Icon name="sparkle" className="mt-1 h-4 w-4 shrink-0 text-[rgb(var(--gold))]" />
+                <Icon name="sparkle" className="mt-1 h-4 w-4 shrink-0 text-[rgb(var(--accent))]" />
                 <span>{question}</span>
               </li>
             ))}

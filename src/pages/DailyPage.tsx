@@ -176,7 +176,7 @@ export default function DailyPage() {
             ) : devotionalError ? (
               <div className="glass p-5 sm:p-6">
                 <div className="flex items-start gap-3">
-                  <Icon name="info" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--gold))]" />
+                  <Icon name="info" className="mt-0.5 h-5 w-5 shrink-0 text-[rgb(var(--accent))]" />
                   <div>
                     <h3 className="display text-[1.125rem]">
                       {devotionalError.code === 'not_configured'
