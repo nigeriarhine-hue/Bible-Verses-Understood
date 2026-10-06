@@ -63,7 +63,7 @@ export default function ChapterPage() {
       </div>
 
       <article className="glass-light overflow-hidden">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgb(12_27_46/0.1)] px-5 py-4 sm:px-6">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge/20 px-5 py-4 sm:px-6">
           <div>
             <h1 className="display text-[1.5rem] leading-tight text-[rgb(var(--scripture-ink))] sm:text-[1.85rem]">
               {book.name} {chapterNumber}
@@ -99,7 +99,7 @@ export default function ChapterPage() {
                   <Link
                     to={`/verse/${book.id}/${chapterNumber}/${verse.verse}`}
                     state={{ source: 'browse', resetTrail: true }}
-                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[rgb(12_27_46/0.14)] text-ui-xs font-semibold text-[rgb(var(--accent-strong))] transition hover:border-[rgb(var(--accent-strong))] hover:bg-[rgb(var(--accent-strong))]/10"
+                    className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-edge/25 text-ui-xs font-semibold text-[rgb(var(--accent-strong))] transition hover:border-[rgb(var(--accent-strong))] hover:bg-[rgb(var(--accent-strong))]/10"
                     aria-label={`Understand ${book.name} ${chapterNumber}:${verse.verse}`}
                   >
                     {verse.verse}
@@ -123,7 +123,7 @@ export default function ChapterPage() {
         </div>
 
         {data?.copyright ? (
-          <p className="border-t border-[rgb(12_27_46/0.1)] px-5 py-3 text-ui-xs muted-on-light sm:px-6">
+          <p className="border-t border-edge/20 px-5 py-3 text-ui-xs muted-on-light sm:px-6">
             {data.copyright}
           </p>
         ) : null}

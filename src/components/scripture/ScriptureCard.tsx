@@ -23,7 +23,7 @@ export function ScriptureCard({
 
   return (
     <article className="glass-light overflow-hidden" aria-labelledby={headingId}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgb(12_27_46/0.1)] px-5 py-3.5 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge/20 px-5 py-3.5 sm:px-6">
         <div className="min-w-0">
           <h1 id={headingId} className="display text-[1.35rem] leading-tight text-[rgb(var(--scripture-ink))] sm:text-[1.6rem]">
             {passage.reference.reference}
@@ -51,7 +51,7 @@ export function ScriptureCard({
         </p>
       </div>
 
-      <div className="flex items-start gap-2 border-t border-[rgb(12_27_46/0.1)] px-5 py-3 sm:px-6">
+      <div className="flex items-start gap-2 border-t border-edge/20 px-5 py-3 sm:px-6">
         <Icon name="book" className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--scripture-ink-muted))]" />
         <p className="text-ui-xs leading-relaxed muted-on-light">
           Scripture text retrieved from the {passage.translationName}.

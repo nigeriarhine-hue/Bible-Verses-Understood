@@ -9,10 +9,14 @@
    Everything readable sits on one of two surfaces:
 
      .glass        warm parchment    → dark ink   (interface, commentary)
-     .glass-light  brighter cream    → dark ink   (Scripture)
+     .glass-light  brighter parchment → dark ink  (Scripture)
 
    The two still read as different surfaces; the Scripture card is the brighter
-   of them, which is the point — Scripture is not commentary.
+   of them, which is the point — Scripture is not commentary. But brighter means
+   a lighter parchment, not a whiter one: --scripture-surface stays above --panel
+   on every channel while keeping the same warm cast. A chapter is long enough
+   that its sheet fills the viewport, so any drift toward white stops being a
+   highlight and becomes the page.
 
    Both are opaque enough that the sky behind them cannot pull the contrast
    below WCAG AA. scripts/audit-contrast.mjs checks this for every token pair
@@ -29,7 +33,7 @@
   --panel: 246 233 211;
   --panel-alpha: 0.92;
   --panel-strong-alpha: 0.96;
-  --scripture-surface: 255 251 243;
+  --scripture-surface: 252 243 225;
   --scripture-surface-alpha: 0.97;
 
   /* Ink */
@@ -252,12 +256,12 @@
   }
 
   .btn-on-light {
-    background-color: rgb(12 27 46 / 0.06);
-    border: 1px solid rgb(12 27 46 / 0.16);
+    background-color: rgb(var(--edge) / 0.11);
+    border: 1px solid rgb(var(--edge) / 0.3);
     color: rgb(var(--scripture-ink));
   }
   .btn-on-light:hover {
-    background-color: rgb(12 27 46 / 0.11);
+    background-color: rgb(var(--edge) / 0.2);
   }
 
   /* ---------------------------------------------------------------------- */
