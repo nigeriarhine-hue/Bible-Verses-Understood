@@ -339,7 +339,7 @@ def render_chapter(c, num, prev_href, next_href, book_href):
 
 
 BANNED = [r'5x5x5', r'\bquiz\b', r'answer key', r'write down', r'ask yourself',
-          r'read the nearby', r'memory challenge', r'spaced repetition', r'highlight(?:ing)? (?:the|each|every)',
+          r'read the nearby', r'memory challenge', r'spaced repetition', r'highlight(?:ing)? (?:each|every|key) (?:verse|word|phrase)',
           r'\bTODO\b', r'\bTBD\b', r'lorem', r'imagine (?:a|someone)', r'for example, (?:a|someone) (?:woman|man|person) named']
 
 
