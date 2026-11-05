@@ -1,0 +1,39 @@
+@charset "utf-8";
+/* ROOTED — reflowable reading styles. Relative units only so reader font controls work. */
+body { font-family: Georgia, "Times New Roman", serif; line-height: 1.6; margin: 0 4%; color: #1f3329; background-color: #fffdf8; }
+h1, h2, h3, h4 { font-family: Georgia, "Times New Roman", serif; color: #1f4a39; line-height: 1.3; font-weight: bold; page-break-after: avoid; break-after: avoid; }
+h1 { font-size: 1.7em; margin: 0.3em 0 0.3em; }
+h2 { font-size: 1.35em; margin: 1.8em 0 0.6em; padding-bottom: 0.2em; border-bottom: 1px solid #d8c99a; }
+h3 { font-size: 1.15em; margin: 1.5em 0 0.5em; }
+h3.sub { font-size: 1.05em; color: #2c5a45; }
+h4 { font-size: 1em; margin: 1.3em 0 0.4em; color: #6a5420; letter-spacing: 0.02em; }
+p { margin: 0 0 0.9em; text-align: left; orphans: 2; widows: 2; }
+a { color: #23603f; }
+em.ref { font-style: italic; }
+em.sq { font-style: italic; }
+.eyebrow { font-family: Helvetica, Arial, sans-serif; font-size: 0.75em; letter-spacing: 0.08em; text-transform: uppercase; color: #6d7d62; margin: 1.2em 0 0.2em; }
+.chapter-header { border-bottom: 2px solid #c9aa61; padding-bottom: 0.6em; margin-bottom: 1em; }
+.theme { font-size: 1.05em; font-style: italic; color: #3d5a48; margin: 0.4em 0 0.5em; }
+.theme .label { font-style: normal; font-weight: bold; }
+.readlink { font-size: 0.85em; margin: 0.2em 0 0.4em; }
+.main-teaching { background-color: #f2f5ee; border-left: 3px solid #8fa67f; padding: 0.6em 0.9em 0.1em; margin: 1em 0 1.4em; }
+.label-block { font-weight: bold; color: #1f4a39; margin-bottom: 0.3em; }
+.verse-study { margin: 1.8em 0 2em; padding-top: 0.4em; border-top: 1px solid #e2dcc8; }
+blockquote.verse { margin: 0.8em 0 1.1em; padding: 0.7em 0.9em 0.3em; background-color: #fbf6ea; border-left: 3px solid #bd9146; }
+blockquote.verse p { font-size: 1.05em; line-height: 1.55; margin-bottom: 0.4em; }
+.versetag { font-size: 0.85em; color: #5f6f5f; text-align: right; }
+.prayer p { font-style: italic; }
+.bottomnav { margin-top: 2em; padding-top: 0.7em; border-top: 1px solid #d0d6c9; font-size: 0.9em; }
+.chapter-list li, nav#toc li { margin: 0.35em 0; }
+nav#toc ol { padding-left: 1.2em; }
+.cover { text-align: center; margin: 0; padding: 0; }
+.cover img { max-width: 100%; height: auto; }
+body.coverpage { margin: 0; }
+@media (prefers-color-scheme: dark) {
+  body { background-color: #18221c; color: #e4ebe2; }
+  h1, h2, h3, h4, .label-block { color: #cfe3cb; }
+  h4 { color: #e2c98a; }
+  a { color: #a9d4ad; }
+  .main-teaching, blockquote.verse { background-color: #26332a; color: #eef0e6; }
+  .theme, .versetag, .eyebrow { color: #c6d1bf; }
+}
