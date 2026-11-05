@@ -61,6 +61,9 @@ REF_ANY = re.compile(
     r'|(?<=[;,] )(?P<bc>\d+):(?P<bv>\d+)(?:[-–](?P<bv2>\d+))?'
 )
 
+SINGLE_CHAPTER = {'OBA', 'PHM', '2JN', '3JN', 'JUD'}
+
+
 def smart(t):
     """Typographic quotes for editorial prose."""
     t = re.sub(r'(^|[\s(\[—\u0000])"', '\\1“', t)
@@ -123,6 +126,8 @@ def inline(text, ctx):
                 ok = refs.exists(c, cc, v1) and refs.exists(c, int(g['c2']), int(g['v3']))
             else:
                 ok = refs.exists(c, cc, v1, int(g['v2'] or v1))
+        elif c in SINGLE_CHAPTER:  # "Philemon 24" means verse 24
+            ok = refs.exists(c, 1, cc, int(g['c2c'] or cc))
         else:  # chapter or chapter range
             last = int(g['c2c'] or cc)
             ok = all(str(x) in refs.WEB[c] for x in range(cc, last + 1))
