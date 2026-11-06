@@ -2,7 +2,7 @@
 
 ## About This Gospel
 
-The Gospel of John is the fourth Gospel and the most reflective of the four. Its author describes himself as "the disciple whom Jesus loved" (John 21:20–24), and early Christian tradition identifies him as John the son of Zebedee, one of the Twelve. Most scholars date the book to the last decades of the first century, and tradition connects it with the church in Ephesus. John tells us plainly why he wrote: "these are written, that you may believe that Jesus is the Christ, the Son of God, and that believing you may have life in his name" (John 20:31).
+The Gospel of John is the fourth Gospel and the most reflective of the four. Its author describes himself as "the disciple whom Jesus loved" (John 21:20–24), and early Christian tradition identifies him as John the son of Zebedee, one of the Twelve. Most scholars date the book to the last decades of the first century, and tradition connects it with the church in Ephesus. John tells us plainly why he wrote: [[John 20:31|these are written, that you may believe that Jesus is the Christ, the Son of God, and that believing you may have life in his name]].
 
 ## The Shape of the Book
 
