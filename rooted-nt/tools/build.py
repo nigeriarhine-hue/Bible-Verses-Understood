@@ -28,7 +28,7 @@ Inline markup:
     *text* italic, **text** bold
 Bare references like "Romans 8:28" are validated and italicized automatically.
 """
-import glob, html, os, re, shutil, sys, zipfile, datetime, uuid
+import os, glob, html, os, re, shutil, sys, zipfile, datetime, uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
@@ -117,6 +117,8 @@ def inline(text, ctx):
             state['book'] = c
         else:
             c = state['book']
+            if c != code and os.environ.get('BAREWARN'):
+                warnings.append('%s: bare ref %s resolves to %s' % (where, m.group(0), c))
         if g['bc']:
             g = dict(g, c1=g['bc'], v1=g['bv'], v2=g['bv2'], c2=None)
         cc = int(g['c1'])

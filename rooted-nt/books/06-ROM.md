@@ -2,7 +2,7 @@
 
 ## About This Letter
 
-Paul wrote Romans around A.D. 57, probably from Corinth, near the end of his third missionary journey (Acts 20:2–3; Romans 15:25–26; 16:1, 23). He had not yet visited Rome, but he hoped to stop there on his way to Spain and to receive the church's support for that mission (15:23–24). The church in Rome included both Jewish and Gentile believers. Emperor Claudius had expelled Jews from Rome around A.D. 49 (Acts 18:2), and when they returned after his death in A.D. 54, they found congregations now led largely by Gentiles. Tensions between the two groups may lie behind much of the letter. Paul sent the letter by Phoebe, a servant of the church in Cenchreae (16:1–2).
+Paul wrote Romans around A.D. 57, probably from Corinth, near the end of his third missionary journey (Acts 20:2–3; Romans 15:25–26; 16:1, 23). He had not yet visited Rome, but he hoped to stop there on his way to Spain and to receive the church's support for that mission (15:23–24). The church in Rome included both Jewish and Gentile believers. Emperor Claudius had expelled Jews from Rome around A.D. 49 (Acts 18:2), and when they returned after his death in A.D. 54, they found congregations now led largely by Gentiles. Tensions between the two groups may lie behind much of the letter. Paul sent the letter by Phoebe, a servant of the church in Cenchreae (Romans 16:1–2).
 
 ## The Shape of the Letter
 
